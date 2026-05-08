@@ -120,22 +120,42 @@
         SUB_MAP['Erro Stow'] = 'Erro operacional';
         SUB_MAP['Missort'] = 'Missort';
 
+        var BUCKET_COLORS = {};
+        BUCKET_COLORS['Perda de CPT'] = 'E6CCFF';
+        BUCKET_COLORS['Erro Stow'] = '4472C4';
+        BUCKET_COLORS['MNR - OTR last bip'] = 'FF7F7F';
+        BUCKET_COLORS['MNR - PUDO last bip'] = 'BDD7EE';
+        BUCKET_COLORS['MNR - UTR last bip'] = 'C6EFCE';
+        BUCKET_COLORS['Reslammed'] = '808000';
+        BUCKET_COLORS['Erro de Departure'] = '556B2F';
+        BUCKET_COLORS['Missort'] = '92D050';
+        BUCKET_COLORS['APP finalizado e nao processado'] = 'FF66FF';
+        BUCKET_COLORS['Wrong Node'] = 'FFCCCC';
+        BUCKET_COLORS['Atraso na chegada no SPC'] = 'FFC000';
+
+        var SUB_COLORS = {};
+        SUB_COLORS['PUDO'] = 'FFFF00';
+        SUB_COLORS['Falha Gestao'] = 'E6CCFF';
+        SUB_COLORS['Falta de energia/Internet'] = 'FF0000';
+        SUB_COLORS['Absenteismo'] = 'FFA500';
+        SUB_COLORS['SPC deixou pacote no piso'] = 'FFFF00';
+        SUB_COLORS['Missort'] = 'C0C0C0';
+        SUB_COLORS['Erro operacional'] = '008000';
+        SUB_COLORS['Problema MM'] = 'BDD7EE';
+        SUB_COLORS['Atraso DA'] = 'FFA500';
+
         var HEADER_STYLE = {
             font: { bold: true, color: { rgb: "FFFFFF" } },
             fill: { fgColor: { rgb: "4472C4" } },
             alignment: { horizontal: "center", vertical: "center" }
         };
-        var BAND_STYLE = {
-            fill: { fgColor: { rgb: "C0E6F5" } },
-            font: { color: { rgb: "000000" } }
-        };
-        var PLAIN_STYLE = {
-            fill: { fgColor: { rgb: "FFFFFF" } },
-            font: { color: { rgb: "000000" } }
-        };
+        var BAND_STYLE = { fill: { fgColor: { rgb: "C0E6F5" } }, font: { color: { rgb: "000000" } } };
+        var PLAIN_STYLE = { fill: { fgColor: { rgb: "FFFFFF" } }, font: { color: { rgb: "000000" } } };
 
         var gHeaders = [];
         var gData = [];
+        var gBucketIdx = -1;
+        var gSubIdx = -1;
 
         function extractDate(val){
             if(val===null||val===undefined) return '';
@@ -243,6 +263,8 @@
                     }
                     if(ci===-1) throw new Error('Coluna Classificacao nao encontrada');
                     if(bi===-1) throw new Error('Coluna Bucket nao encontrada');
+                    gBucketIdx=bi;
+                    gSubIdx=si;
                     gData=[];
                     var uC=0,mC=0,bCounts={};
                     for(var r=0;r<data.length;r++){
@@ -296,25 +318,33 @@
             if(!gData.length) return;
             var all=[gHeaders].concat(gData);
             var ws=XLSX.utils.aoa_to_sheet(all);
-
             var range=XLSX.utils.decode_range(ws['!ref']);
-            var colCount=gHeaders.length;
 
             for(var R=range.s.r;R<=range.e.r;R++){
                 for(var C=range.s.c;C<=range.e.c;C++){
                     var addr=XLSX.utils.encode_cell({r:R,c:C});
                     if(!ws[addr]) ws[addr]={v:'',t:'s'};
+
                     if(R===0){
                         ws[addr].s=HEADER_STYLE;
                     } else {
-                        var isOdd=(R%2===1);
-                        ws[addr].s=isOdd?BAND_STYLE:PLAIN_STYLE;
+                        var isBucketCol=(C===gBucketIdx);
+                        var isSubCol=(C===gSubIdx);
+                        var cellVal=String(ws[addr].v||'').trim();
+
+                        if(isBucketCol && cellVal && BUCKET_COLORS.hasOwnProperty(cellVal)){
+                            ws[addr].s={fill:{fgColor:{rgb:BUCKET_COLORS[cellVal]}},font:{color:{rgb:"000000"},bold:true}};
+                        } else if(isSubCol && cellVal && SUB_COLORS.hasOwnProperty(cellVal)){
+                            ws[addr].s={fill:{fgColor:{rgb:SUB_COLORS[cellVal]}},font:{color:{rgb:"000000"},bold:true}};
+                        } else {
+                            var isOdd=(R%2===1);
+                            ws[addr].s=isOdd?BAND_STYLE:PLAIN_STYLE;
+                        }
                     }
                 }
             }
 
             ws['!cols']=[{wch:16},{wch:44},{wch:13},{wch:31},{wch:31},{wch:31},{wch:31},{wch:13},{wch:13},{wch:49},{wch:26},{wch:43}];
-
             var wb=XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb,ws,'Classificado');
             XLSX.writeFile(wb,'ead_classificado.xlsx');
