@@ -55,7 +55,6 @@
         .tag { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 0.7em; margin-left: 4px; }
         .tag-utr { background: rgba(251,191,36,0.2); color: #fbbf24; }
         .tag-mnr { background: rgba(167,139,250,0.2); color: #a78bfa; }
-        .format-badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 0.75em; background: rgba(0,212,255,0.15); color: #00d4ff; margin-top: 8px; }
     </style>
 </head>
 <body>
@@ -74,14 +73,13 @@
         <ul>
             <li>UTR Error: Pacote chegou (tem 201) mas com atraso</li>
             <li class="sub">Atraso chegada no SPC | APP finalizado e nao processado | Perda de CPT | Erro Departure | Erro Stow</li>
-            <li>MNR: Pacote nao recebido (sem 201 no destino)</li>
+            <li>MNR: Pacote nao recebido (sem 201 no node)</li>
             <li class="sub">MNR-OTR last bip | MNR-PUDO last bip | MNR-UTR last bip | Nao entregue SPC/PN</li>
             <li>Sub-Bucket: PUDO (Event 105) | Atraso DA (sem Event 105)</li>
         </ul>
-        <h3 style="margin-top:10px;">Formatos aceitos:</h3>
+        <h3 style="margin-top:10px;">Input aceito (OBLT LIMPA):</h3>
         <ul>
-            <li>OBLT: tracking_id, status_event, status_date</li>
-            <li>FM METRICS: Tracking id, Planned lane, Node, EAD, Event103/201/202...</li>
+            <li>tracking_id, status_event, status_date, status_node_id + demais colunas</li>
         </ul>
     </div>
 
@@ -89,14 +87,13 @@
         <div class="error" id="errorMsg"></div>
 
         <div class="section">
-            <div class="section-title">1. Carregar arquivo (.xlsx)</div>
+            <div class="section-title">1. Carregar arquivo OBLT (.xlsx)</div>
             <div class="drop-zone" id="dropZone">
                 <div class="icon">📂</div>
                 Arraste o arquivo .xlsx aqui ou clique para selecionar
-                <p>Detecta automaticamente: OBLT ou FM METRICS</p>
+                <p>Formato OBLT com colunas: tracking_id, status_event, status_date, status_node_id</p>
             </div>
             <input type="file" id="fileInput" accept=".xlsx">
-            <div class="format-badge" id="formatBadge" style="display:none;"></div>
         </div>
 
         <div class="loading" id="loading">
@@ -147,66 +144,31 @@
         const MODELO_HEADERS = ['tracking id','route','node','estimated_arrival_datetime_brt','expected_pickup_datetime_brt','arrived_or_event_201_brt','departure_or_event_202_brt','Classificação','CPT Status','Bucket','Sub-Bucket','Obs'];
         const COL_WIDTHS = [{wch:16},{wch:44},{wch:13},{wch:31},{wch:31},{wch:31},{wch:31},{wch:13},{wch:13},{wch:49},{wch:26},{wch:43}];
 
-        // Excel styles
-        const HDR_STYLE = {
-            fill: { fgColor: { rgb: "2F5597" } },
-            font: { bold: true, color: { rgb: "FFFFFF" }, sz: 12 },
-            alignment: { horizontal: "center", vertical: "center" },
-            border: {
-                top: { style: "thin", color: { rgb: "1F3864" } },
-                bottom: { style: "thin", color: { rgb: "1F3864" } },
-                left: { style: "thin", color: { rgb: "1F3864" } },
-                right: { style: "thin", color: { rgb: "1F3864" } }
-            }
-        };
-        const ROW_EVEN = {
-            fill: { fgColor: { rgb: "C0E6F5" } },
-            font: { color: { rgb: "000000" }, sz: 11 },
-            border: {
-                bottom: { style: "thin", color: { rgb: "D9E2F3" } }
-            }
-        };
-        const ROW_ODD = {
-            fill: { fgColor: { rgb: "FFFFFF" } },
-            font: { color: { rgb: "000000" }, sz: 11 },
-            border: {
-                bottom: { style: "thin", color: { rgb: "D9E2F3" } }
-            }
-        };
+        // Excel Styles (Modelo format)
+        const S_HDR = { fill:{fgColor:{rgb:"2F5597"}}, font:{bold:true,color:{rgb:"FFFFFF"},sz:12}, alignment:{horizontal:"center",vertical:"center"}, border:{top:{style:"thin",color:{rgb:"1F3864"}},bottom:{style:"thin",color:{rgb:"1F3864"}},left:{style:"thin",color:{rgb:"1F3864"}},right:{style:"thin",color:{rgb:"1F3864"}}} };
+        const S_EVEN = { fill:{fgColor:{rgb:"C0E6F5"}}, font:{color:{rgb:"000000"},sz:11}, border:{bottom:{style:"thin",color:{rgb:"D9E2F3"}}} };
+        const S_ODD = { fill:{fgColor:{rgb:"FFFFFF"}}, font:{color:{rgb:"000000"},sz:11}, border:{bottom:{style:"thin",color:{rgb:"D9E2F3"}}} };
 
-        let cleanRows = [];
-        let removedRows = [];
-        let classifiedData = [];
-        let origHeaders = [];
-        let detectedFormat = '';
+        let cleanRows = [], removedRows = [], classifiedData = [], origHeaders = [];
 
         window.addEventListener('load', () => {
-            if (typeof XLSX === 'undefined') showError('Biblioteca nao carregou. Abra com internet.');
+            if (typeof XLSX === 'undefined') showError('Biblioteca nao carregou. Abra com internet pelo menos uma vez.');
         });
 
-        function showError(msg) {
-            const el = document.getElementById('errorMsg');
-            el.textContent = msg; el.style.display = 'block';
-        }
+        function showError(msg) { const el=document.getElementById('errorMsg'); el.textContent=msg; el.style.display='block'; }
 
         const dropZone = document.getElementById('dropZone');
         const fileInput = document.getElementById('fileInput');
         dropZone.addEventListener('click', () => fileInput.click());
-        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
         dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault(); dropZone.classList.remove('dragover');
-            if (e.dataTransfer.files.length) processFile(e.dataTransfer.files);
-        });
-        fileInput.addEventListener('change', (e) => { if (e.target.files.length) processFile(e.target.files); });
+        dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('dragover'); if(e.dataTransfer.files.length) processFile(e.dataTransfer.files); });
+        fileInput.addEventListener('change', e => { if(e.target.files.length) processFile(e.target.files); });
 
         // === HELPERS ===
         function normDate(val) {
-            if (!val || val === '-') return '';
-            if (typeof val === 'number') {
-                const d = XLSX.SSF.parse_date_code(val);
-                if (d) return d.y+'-'+String(d.m).padStart(2,'0')+'-'+String(d.d).padStart(2,'0');
-            }
+            if (!val || val==='-') return '';
+            if (typeof val==='number') { const d=XLSX.SSF.parse_date_code(val); if(d) return d.y+'-'+String(d.m).padStart(2,'0')+'-'+String(d.d).padStart(2,'0'); }
             const s = String(val).trim();
             const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
             if (iso) return iso;
@@ -217,209 +179,65 @@
 
         function getNodeFromRoute(route) {
             if (!route) return '';
-            const sep = route.includes('->') ? '->' : ' ';
-            const parts = route.split(sep).map(s => s.trim()).filter(Boolean);
-            for (const p of parts) { if (SPC_NODES.includes(p) || PN_NODES.includes(p)) return p; }
-            return parts.length > 1 ? parts : (parts||'');
+            const parts = route.split('->').map(s=>s.trim()).filter(Boolean);
+            for (const p of parts) { if (SPC_NODES.includes(p)||PN_NODES.includes(p)) return p; }
+            return parts.length>1 ? parts : (parts||'');
         }
 
         // === CLASSIFICATION ===
         function classify(ev103, ev105, ev216, ev201, ev202, route, node) {
-            const has103 = !!ev103;
             const has105 = !!ev105;
-            const has216 = !!ev216;
             const has201 = !!ev201;
             const has202 = !!ev202;
+            const has216 = !!ev216;
 
             const subBucket = has105 ? 'PUDO' : 'Atraso DA';
             const targetNode = node || getNodeFromRoute(route);
             const isSPC = SPC_NODES.includes(targetNode);
             const isPN = PN_NODES.includes(targetNode);
 
-            // UTR Error
+            // UTR Error (has 201 at node)
             if (has201) {
-                const d103 = normDate(ev103), d201 = normDate(ev201), d216 = normDate(ev216), d202 = has202 ? normDate(ev202) : '';
-                const same103_201 = d103 && d201 && d103 === d201;
-                const same103_216 = d103 && d216 && d103 === d216;
+                const d103 = normDate(ev103), d201 = normDate(ev201), d216 = normDate(ev216), d202 = has202?normDate(ev202):'';
+                const same103_201 = d103 && d201 && d103===d201;
+                const same103_216 = d103 && d216 && d103===d216;
 
                 if (same103_201) {
-                    if (has202) {
-                        if (d202 !== d103) return { cls:'UTR Error', cpt:'Stow Miss', bucket:'Perda de CPT', sub:'' };
-                    } else {
-                        return { cls:'UTR Error', cpt:'Stow Miss', bucket:'Erro Departure', sub:'' };
-                    }
+                    if (has202 && d202!==d103) return {cls:'UTR Error',cpt:'Stow Miss',bucket:'Perda de CPT',sub:''};
+                    if (!has202) return {cls:'UTR Error',cpt:'Stow Miss',bucket:'Erro Departure',sub:''};
                 }
-                if (same103_216 && !same103_201) {
-                    return { cls:'UTR Error', cpt:'Stow Miss', bucket:'APP finalizado e nao processado', sub:'SPC deixou pacote no piso' };
-                }
-                return { cls:'UTR Error', cpt:'Stow Miss', bucket:'Atraso na chegada no SPC', sub:subBucket };
+                if (same103_216 && !same103_201) return {cls:'UTR Error',cpt:'Stow Miss',bucket:'APP finalizado e nao processado',sub:'SPC deixou pacote no piso'};
+                return {cls:'UTR Error',cpt:'Stow Miss',bucket:'Atraso na chegada no SPC',sub:subBucket};
             }
 
-            if (has202 && !has201) return { cls:'UTR Error', cpt:'Stow Miss', bucket:'Erro Stow', sub:'' };
+            if (has202 && !has201) return {cls:'UTR Error',cpt:'Stow Miss',bucket:'Erro Stow',sub:''};
 
             // MNR
-            const routeParts = (route||'').replace(/->/g,' ').split(' ').map(s=>s.trim()).filter(Boolean);
-            const hasPN_inRoute = routeParts.some(p => PN_NODES.includes(p));
+            const routeParts = (route||'').split('->').map(s=>s.trim()).filter(Boolean);
+            const hasPN_inRoute = routeParts.some(p=>PN_NODES.includes(p));
 
-            if (has105 && has216) return { cls:'MNR', cpt:'Stow Miss', bucket:'MNR - PUDO last bip', sub:'PUDO' };
+            if (has105 && has216) return {cls:'MNR',cpt:'Stow Miss',bucket:'MNR - PUDO last bip',sub:'PUDO'};
 
-            if (has103 && has216) {
-                if (isPN) return { cls:'MNR', cpt:'Stow Miss', bucket:'Pacote coletado e nao entregue no PN', sub:subBucket };
+            if (ev103 && has216) {
+                if (isPN) return {cls:'MNR',cpt:'Stow Miss',bucket:'Pacote coletado e nao entregue no PN',sub:subBucket};
                 if (isSPC) {
-                    if (hasPN_inRoute) return { cls:'MNR', cpt:'Stow Miss', bucket:'Pacote processado no PN e nao chegou no SPC', sub:'' };
-                    return { cls:'MNR', cpt:'Stow Miss', bucket:'Pacote coletado e nao entregue no SPC', sub:subBucket };
+                    if (hasPN_inRoute) return {cls:'MNR',cpt:'Stow Miss',bucket:'Pacote processado no PN e nao chegou no SPC',sub:''};
+                    return {cls:'MNR',cpt:'Stow Miss',bucket:'Pacote coletado e nao entregue no SPC',sub:subBucket};
                 }
-                return { cls:'MNR', cpt:'Stow Miss', bucket:'MNR - OTR last bip', sub:subBucket };
+                return {cls:'MNR',cpt:'Stow Miss',bucket:'MNR - OTR last bip',sub:subBucket};
             }
 
-            if (isSPC) return { cls:'MNR', cpt:'Stow Miss', bucket:'Pacote coletado e nao entregue no SPC', sub:subBucket };
-            if (isPN) return { cls:'MNR', cpt:'Stow Miss', bucket:'Pacote coletado e nao entregue no PN', sub:subBucket };
-            return { cls:'MNR', cpt:'Stow Miss', bucket:'MNR - OTR last bip', sub:subBucket };
+            if (isSPC) return {cls:'MNR',cpt:'Stow Miss',bucket:'Pacote coletado e nao entregue no SPC',sub:subBucket};
+            if (isPN) return {cls:'MNR',cpt:'Stow Miss',bucket:'Pacote coletado e nao entregue no PN',sub:subBucket};
+            return {cls:'MNR',cpt:'Stow Miss',bucket:'MNR - OTR last bip',sub:subBucket};
         }
 
-        // === DETECT FORMAT ===
-        function detectFormat(h) {
-            const lh = h.map(x => String(x||'').toLowerCase().trim());
-            if (lh.some(x => x.includes('status_event')) && lh.some(x => x.includes('tracking_id'))) return 'OBLT';
-            if (lh.some(x => x.includes('planned lane') || x.includes('planned_lane') || x.includes('event103'))) return 'FM_METRICS';
-            return 'UNKNOWN';
-        }
-
-        // === PROCESS FM METRICS ===
-        function processFM(headers, rows) {
-            const h = headers.map(x => String(x||'').toLowerCase().trim());
-            const idx = {
-                tracking: h.findIndex(x => x.includes('tracking')),
-                lane: h.findIndex(x => x.includes('planned lane') || x.includes('planned_lane')),
-                node: h.findIndex(x => x === 'node'),
-                ead: h.findIndex(x => x === 'ead' || x.includes('estimated_arrival')),
-                scheduled: h.findIndex(x => x.includes('scheduled') || x.includes('expected_pickup')),
-                ev105: h.findIndex(x => x.includes('event105')),
-                ev103: h.findIndex(x => x.includes('event103')),
-                ev216: h.findIndex(x => x.includes('event216') && !x.includes('2nd')),
-                ev201: h.findIndex(x => x.includes('event201')),
-                ev202: h.findIndex(x => x.includes('event202')),
-            };
-
-            let rule1=0, rule2=0;
-            classifiedData=[]; cleanRows=[]; removedRows=[];
-
-            rows.forEach(row => {
-                if (!row || row.length===0) return;
-                const tid = idx.tracking>=0 ? String(row[idx.tracking]||'').trim() : '';
-                if (!tid) return;
-
-                const ev103 = idx.ev103>=0 ? String(row[idx.ev103]||'').trim() : '';
-                const ev216 = idx.ev216>=0 ? String(row[idx.ev216]||'').trim() : '';
-                const ev201 = idx.ev201>=0 ? String(row[idx.ev201]||'').trim() : '';
-                const ev202 = idx.ev202>=0 ? String(row[idx.ev202]||'').trim() : '';
-                const ev105 = idx.ev105>=0 ? String(row[idx.ev105]||'').trim() : '';
-
-                const has103 = ev103 && ev103!=='-';
-                const has216 = ev216 && ev216!=='-';
-                const has201 = ev201 && ev201!=='-';
-
-                // Rule 1
-                if (has103 && !has216) { removedRows.push(row); rule1++; return; }
-                // Rule 2
-                if (has103 && has201 && normDate(ev103)===normDate(ev201)) { removedRows.push(row); rule2++; return; }
-
-                cleanRows.push(row);
-
-                const lane = idx.lane>=0 ? String(row[idx.lane]||'').trim() : '';
-                const node = idx.node>=0 ? String(row[idx.node]||'').trim() : '';
-                const ead = idx.ead>=0 ? String(row[idx.ead]||'').trim() : '';
-                const scheduled = idx.scheduled>=0 ? String(row[idx.scheduled]||'').trim() : '';
-
-                const route = lane.includes('->') ? lane : lane.replace(/\s+/g,'->');
-                const targetNode = node || getNodeFromRoute(route);
-
-                const r = classify(
-                    has103?ev103:null, (ev105&&ev105!=='-')?ev105:null,
-                    has216?ev216:null, has201?ev201:null,
-                    (ev202&&ev202!=='-')?ev202:null, route, targetNode
-                );
-
-                classifiedData.push([
-                    tid, route, targetNode,
-                    (ead&&ead!=='-') ? ead : '',
-                    (scheduled&&scheduled!=='-') ? scheduled : '',
-                    has201 ? ev201 : '',
-                    (ev202&&ev202!=='-') ? ev202 : '',
-                    r.cls, r.cpt, r.bucket, r.sub, ''
-                ]);
-            });
-
-            return { total: rows.filter(r=>r&&r.length>0).length, rule1, rule2 };
-        }
-
-        // === PROCESS OBLT ===
-        function processOBLT(headers, rows) {
-            const h = headers.map(x => String(x||'').toLowerCase().trim());
-            const tIdx = h.findIndex(x => x.includes('tracking_id'));
-            const eIdx = h.findIndex(x => x.includes('status_event'));
-            const dIdx = h.findIndex(x => x.includes('status_date'));
-            if (tIdx===-1||eIdx===-1||dIdx===-1) throw new Error('Colunas nao encontradas');
-
-            const groups = {};
-            rows.forEach(row => {
-                if (!row||row.length===0) return;
-                const tid = String(row[tIdx]||'').trim();
-                if (!tid) return;
-                if (!groups[tid]) groups[tid]=[];
-                groups[tid].push(row);
-            });
-
-            let rule1=0, rule2=0;
-            classifiedData=[]; cleanRows=[]; removedRows=[];
-
-            Object.entries(groups).forEach(([tid, tRows]) => {
-                const evts = tRows.map(r => String(r[eIdx]||'').trim().toUpperCase());
-                const has103 = evts.some(e => e==='EVENT_103');
-                const has216 = evts.some(e => e==='EVENT_216');
-
-                if (has103 && !has216) { removedRows.push(...tRows); rule1++; return; }
-
-                if (has103) {
-                    const d103 = [];
-                    tRows.forEach(r => { if (String(r[eIdx]||'').trim().toUpperCase()==='EVENT_103') d103.push(normDate(r[dIdx])); });
-                    const s = tRows.some(r => String(r[eIdx]||'').trim().toUpperCase()==='EVENT_201' && d103.includes(normDate(r[dIdx])));
-                    if (s) { removedRows.push(...tRows); rule2++; return; }
-                }
-
-                cleanRows.push(...tRows);
-
-                const evMap = {};
-                tRows.forEach(r => { const ev=String(r[eIdx]||'').trim().toUpperCase(); evMap[ev]=String(r[dIdx]||''); });
-
-                const lIdx = h.findIndex(x => x.includes('route')||x.includes('lane'));
-                const nIdx = h.findIndex(x => x==='node');
-                const route = lIdx>=0 ? String(tRows[lIdx]||'').trim().replace(/\s+/g,'->') : '';
-                const node = nIdx>=0 ? String(tRows[nIdx]||'').trim() : getNodeFromRoute(route);
-
-                const r = classify(
-                    evMap['EVENT_103']||null, evMap['EVENT_105']||null,
-                    evMap['EVENT_216']||null, evMap['EVENT_201']||null,
-                    evMap['EVENT_202']||null, route, node
-                );
-
-                classifiedData.push([
-                    tid, route, node, '', '',
-                    evMap['EVENT_201']||'', evMap['EVENT_202']||'',
-                    r.cls, r.cpt, r.bucket, r.sub, ''
-                ]);
-            });
-
-            return { total: Object.keys(groups).length, rule1, rule2 };
-        }
-
-        // === MAIN ===
+        // === MAIN PROCESS ===
         function processFile(file) {
             if (!file.name.endsWith('.xlsx')) { alert('Selecione .xlsx'); return; }
             document.getElementById('loading').style.display = 'block';
             document.getElementById('results').style.display = 'none';
             document.getElementById('errorMsg').style.display = 'none';
-            document.getElementById('formatBadge').style.display = 'none';
 
             const reader = new FileReader();
             reader.onload = function(e) {
@@ -431,26 +249,101 @@
 
                     origHeaders = data;
                     const rows = data.slice(1);
-                    detectedFormat = detectFormat(origHeaders);
 
-                    let stats;
-                    if (detectedFormat==='FM_METRICS') stats = processFM(origHeaders, rows);
-                    else if (detectedFormat==='OBLT') stats = processOBLT(origHeaders, rows);
-                    else { try { stats=processFM(origHeaders,rows); detectedFormat='FM_METRICS'; } catch(x) { stats=processOBLT(origHeaders,rows); detectedFormat='OBLT'; } }
+                    // Find column indices
+                    const h = origHeaders.map(x=>String(x||'').toLowerCase().trim());
+                    const tIdx = h.findIndex(x=>x.includes('tracking_id'));
+                    const eIdx = h.findIndex(x=>x.includes('status_event'));
+                    const dIdx = h.findIndex(x=>x.includes('status_date'));
+                    const nIdx = h.findIndex(x=>x.includes('status_node_id'));
 
-                    document.getElementById('formatBadge').textContent = 'Formato: '+detectedFormat;
-                    document.getElementById('formatBadge').style.display = 'inline-block';
+                    if (tIdx===-1||eIdx===-1||dIdx===-1) throw new Error('Colunas tracking_id, status_event ou status_date nao encontradas');
 
-                    document.getElementById('totalTrackings').textContent = stats.total.toLocaleString('pt-BR');
-                    document.getElementById('rule1Trackings').textContent = stats.rule1.toLocaleString('pt-BR');
-                    document.getElementById('rule2Trackings').textContent = stats.rule2.toLocaleString('pt-BR');
+                    // Group by tracking_id
+                    const groups = {};
+                    rows.forEach(row => {
+                        if (!row||row.length===0) return;
+                        const tid = String(row[tIdx]||'').trim();
+                        if (!tid) return;
+                        if (!groups[tid]) groups[tid]=[];
+                        groups[tid].push(row);
+                    });
+
+                    let rule1=0, rule2=0;
+                    cleanRows=[]; removedRows=[]; classifiedData=[];
+                    const totalTrackings = Object.keys(groups).length;
+
+                    Object.entries(groups).forEach(([tid, tRows]) => {
+                        const evts = tRows.map(r=>String(r[eIdx]||'').trim().toUpperCase());
+                        const has103 = evts.some(e=>e==='EVENT_103');
+                        const has216 = evts.some(e=>e==='EVENT_216');
+
+                        // Rule 1: 103 without 216
+                        if (has103 && !has216) { removedRows.push(...tRows); rule1++; return; }
+
+                        // Rule 2: 201 same date as 103
+                        if (has103) {
+                            const dates103 = [];
+                            tRows.forEach(r => { if(String(r[eIdx]||'').trim().toUpperCase()==='EVENT_103') dates103.push(normDate(r[dIdx])); });
+                            const same = tRows.some(r => String(r[eIdx]||'').trim().toUpperCase()==='EVENT_201' && dates103.includes(normDate(r[dIdx])));
+                            if (same) { removedRows.push(...tRows); rule2++; return; }
+                        }
+
+                        cleanRows.push(...tRows);
+
+                        // Build route from node sequence
+                        const nodeSeq = [];
+                        tRows.forEach(r => {
+                            const nd = nIdx>=0 ? String(r[nIdx]||'').trim() : '';
+                            if (nd && !nodeSeq.includes(nd)) nodeSeq.push(nd);
+                        });
+                        const route = nodeSeq.join('->');
+
+                        // Get node where EVENT_103 happened
+                        let node103 = '';
+                        tRows.forEach(r => {
+                            if (String(r[eIdx]||'').trim().toUpperCase()==='EVENT_103') {
+                                node103 = nIdx>=0 ? String(r[nIdx]||'').trim() : '';
+                            }
+                        });
+
+                        // Get event datetimes at the first node (node103)
+                        let dt103='', dt105='', dt216='', dt201='', dt202='';
+                        tRows.forEach(r => {
+                            const ev = String(r[eIdx]||'').trim().toUpperCase();
+                            const nd = nIdx>=0 ? String(r[nIdx]||'').trim() : '';
+                            const dt = String(r[dIdx]||'').trim();
+
+                            if (ev==='EVENT_103' && !dt103) dt103 = dt;
+                            if (ev==='EVENT_105' && !dt105) dt105 = dt;
+                            if (ev==='EVENT_216' && nd===node103 && !dt216) dt216 = dt;
+                            if (ev==='EVENT_201' && nd===node103 && !dt201) dt201 = dt;
+                            if (ev==='EVENT_202' && nd===node103 && !dt202) dt202 = dt;
+                        });
+
+                        // Classify
+                        const r = classify(dt103, dt105, dt216, dt201, dt202, route, node103);
+
+                        classifiedData.push([
+                            tid, route, node103,
+                            '', '',
+                            dt201, dt202,
+                            r.cls, r.cpt, r.bucket, r.sub, ''
+                        ]);
+                    });
+
+                    // Update UI
+                    document.getElementById('totalTrackings').textContent = totalTrackings.toLocaleString('pt-BR');
+                    document.getElementById('rule1Trackings').textContent = rule1.toLocaleString('pt-BR');
+                    document.getElementById('rule2Trackings').textContent = rule2.toLocaleString('pt-BR');
                     document.getElementById('classifiedTotal').textContent = classifiedData.length.toLocaleString('pt-BR');
 
-                    const utr = classifiedData.filter(r => r==='UTR Error').length;
-                    const mnr = classifiedData.filter(r => r==='MNR').length;
+                    const utr = classifiedData.filter(r=>r==='UTR Error').length;
+                    const mnr = classifiedData.filter(r=>r==='MNR').length;
                     document.getElementById('utrTotal').textContent = utr.toLocaleString('pt-BR');
                     document.getElementById('mnrTotal').textContent = mnr.toLocaleString('pt-BR');
 
+                    // Bucket table
                     const bc = {};
                     classifiedData.forEach(r => { const b=r||'N/A'; bc[b]=(bc[b]||0)+1; });
                     const tot = classifiedData.length||1;
@@ -462,6 +355,7 @@
 
                     document.getElementById('loading').style.display = 'none';
                     document.getElementById('results').style.display = 'block';
+
                 } catch(err) {
                     document.getElementById('loading').style.display = 'none';
                     showError('Erro: '+err.message);
@@ -470,28 +364,27 @@
             reader.readAsArrayBuffer(file);
         }
 
-        // === STYLED EXCEL DOWNLOAD ===
+        // === STYLED EXCEL (formato Modelo) ===
         function buildStyledSheet(dataRows) {
             const ws = XLSX.utils.aoa_to_sheet([MODELO_HEADERS, ...dataRows]);
 
-            // Apply header styles
+            // Header style
             for (let c=0; c<12; c++) {
-                const addr = XLSX.utils.encode_cell({r:0,c:c});
-                if (ws[addr]) ws[addr].s = HDR_STYLE;
+                const addr = XLSX.utils.encode_cell({r:0,c});
+                if (ws[addr]) ws[addr].s = S_HDR;
             }
 
-            // Apply zebra rows
+            // Data rows zebra
             for (let r=0; r<dataRows.length; r++) {
-                const style = (r%2===0) ? ROW_EVEN : ROW_ODD;
+                const style = (r%2===0) ? S_EVEN : S_ODD;
                 for (let c=0; c<12; c++) {
-                    const addr = XLSX.utils.encode_cell({r:r+1,c:c});
+                    const addr = XLSX.utils.encode_cell({r:r+1,c});
                     if (ws[addr]) ws[addr].s = style;
-                    else { ws[addr] = {v:'', t:'s', s:style}; }
+                    else ws[addr] = {v:'',t:'s',s:style};
                 }
             }
 
             ws['!cols'] = COL_WIDTHS;
-            ws['!rows'] = [{hpt:16}]; // header row height
             return ws;
         }
 
@@ -501,8 +394,7 @@
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, 'Classificado');
             XLSX.utils.book_append_sheet(wb, createSummary(), 'Resumo');
-            const blob = new Blob([XLSX.write(wb, {bookType:'xlsx',type:'array'})], {type:'application/octet-stream'});
-            downloadBlob(blob, 'ead_classificado.xlsx');
+            dlBlob(new Blob([XLSX.write(wb,{bookType:'xlsx',type:'array'})],{type:'application/octet-stream'}), 'ead_classificado.xlsx');
         }
 
         function downloadClean() {
@@ -510,8 +402,7 @@
             const ws = XLSX.utils.aoa_to_sheet([origHeaders, ...cleanRows]);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, 'Base Limpa');
-            const blob = new Blob([XLSX.write(wb, {bookType:'xlsx',type:'array'})], {type:'application/octet-stream'});
-            downloadBlob(blob, 'base_limpa.xlsx');
+            dlBlob(new Blob([XLSX.write(wb,{bookType:'xlsx',type:'array'})],{type:'application/octet-stream'}), 'base_limpa.xlsx');
         }
 
         function downloadRemoved() {
@@ -519,38 +410,28 @@
             const ws = XLSX.utils.aoa_to_sheet([origHeaders, ...removedRows]);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, 'Removidas');
-            const blob = new Blob([XLSX.write(wb, {bookType:'xlsx',type:'array'})], {type:'application/octet-stream'});
-            downloadBlob(blob, 'removidas.xlsx');
+            dlBlob(new Blob([XLSX.write(wb,{bookType:'xlsx',type:'array'})],{type:'application/octet-stream'}), 'removidas.xlsx');
         }
 
         function createSummary() {
-            const s = [
-                ['EAD Classifier v2.0 - Resumo'],
-                ['Formato: '+detectedFormat], [''],
-                ['Etapa','Metrica','Valor'],
-                ['Limpeza','Total trackings', document.getElementById('totalTrackings').textContent],
-                ['Limpeza','Regra 1 (103 s/ 216)', document.getElementById('rule1Trackings').textContent],
-                ['Limpeza','Regra 2 (201=103)', document.getElementById('rule2Trackings').textContent],
-                [''],
-                ['Classificacao','Classificados', document.getElementById('classifiedTotal').textContent],
-                ['Classificacao','UTR Error', document.getElementById('utrTotal').textContent],
-                ['Classificacao','MNR', document.getElementById('mnrTotal').textContent],
-                [''],['Bucket','Qtd','%']
-            ];
-            const tot = classifiedData.length||1;
-            const bc = {};
-            classifiedData.forEach(r => { const b=r||'-'; bc[b]=(bc[b]||0)+1; });
-            Object.entries(bc).sort((a,b)=>b-a).forEach(([b,c]) => { s.push([b,c,((c/tot)*100).toFixed(1)+'%']); });
+            const s = [['EAD Classifier v2.0 - Resumo'],[''],['Etapa','Metrica','Valor'],
+                ['Limpeza','Total trackings',document.getElementById('totalTrackings').textContent],
+                ['Limpeza','Regra 1 (103 s/ 216)',document.getElementById('rule1Trackings').textContent],
+                ['Limpeza','Regra 2 (201=103)',document.getElementById('rule2Trackings').textContent],
+                [''],['Classificacao','Classificados',document.getElementById('classifiedTotal').textContent],
+                ['Classificacao','UTR Error',document.getElementById('utrTotal').textContent],
+                ['Classificacao','MNR',document.getElementById('mnrTotal').textContent],
+                [''],['Bucket','Qtd','%']];
+            const tot=classifiedData.length||1; const bc={};
+            classifiedData.forEach(r=>{const b=r||'-';bc[b]=(bc[b]||0)+1;});
+            Object.entries(bc).sort((a,b)=>b-a).forEach(([b,c])=>{s.push([b,c,((c/tot)*100).toFixed(1)+'%']);});
             return XLSX.utils.aoa_to_sheet(s);
         }
 
-        function downloadBlob(blob, fn) {
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href=url; a.download=fn;
-            document.body.appendChild(a); a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+        function dlBlob(blob,fn) {
+            const url=URL.createObjectURL(blob); const a=document.createElement('a');
+            a.href=url; a.download=fn; document.body.appendChild(a); a.click();
+            document.body.removeChild(a); URL.revokeObjectURL(url);
         }
     </script>
 </body>
