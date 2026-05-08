@@ -14,9 +14,7 @@
         .rules-info h3 { color: #00d4ff; font-size: 0.9em; margin-bottom: 8px; }
         .rules-info ul { list-style: none; padding: 0; }
         .rules-info li { padding: 3px 0; font-size: 0.8em; color: #ccc; }
-        .rules-info li::before { content: "\26A1"; margin-right: 6px; }
         .rules-info .sub { margin-left: 20px; font-size: 0.75em; color: #999; }
-        .rules-info .sub::before { content: "\2192"; margin-right: 4px; }
         .container { background: #16213e; border-radius: 12px; padding: 30px; max-width: 700px; width: 100%; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
         .section { margin-bottom: 25px; }
         .section-title { font-size: 1em; color: #00d4ff; margin-bottom: 12px; font-weight: 600; }
@@ -36,7 +34,7 @@
         .bucket-table th { text-align: left; color: #00d4ff; padding: 6px 8px; border-bottom: 1px solid #0f3460; font-weight: 500; }
         .bucket-table td { padding: 5px 8px; border-bottom: 1px solid #0a1628; color: #ccc; }
         .bucket-table tr:hover td { background: rgba(0,212,255,0.05); }
-        .btn { display: inline-block; padding: 12px 24px; border: none; border-radius: 8px; font-size: 0.9em; cursor: pointer; transition: all 0.3s; text-decoration: none; margin: 5px; }
+        .btn { display: inline-block; padding: 12px 24px; border: none; border-radius: 8px; font-size: 0.9em; cursor: pointer; transition: all 0.3s; margin: 5px; }
         .btn-class { background: #6366f1; color: #fff; }
         .btn-class:hover { background: #4f46e5; }
         .buttons { text-align: center; }
@@ -56,13 +54,12 @@
         <h1>EAD Classifier</h1>
         <p>Preenchimento automatico de Bucket e Sub-Bucket | Formato Modelo</p>
     </div>
-
     <div class="rules-info">
         <h3>Regras de Bucket (UTR Error):</h3>
         <ul>
-            <li>Atraso na chegada no SPC: 201 em dia diferente do pickup (chegou atrasado)</li>
-            <li>APP finalizado e nao processado: pickup = dia do 201, tem 202 no mesmo dia</li>
-            <li>Perda de CPT: pickup = dia do 201, 202 em dia diferente (CPT Miss)</li>
+            <li>Atraso na chegada no SPC: 201 em dia diferente do pickup</li>
+            <li>APP finalizado e nao processado: pickup = dia do 201, tem 202 mesmo dia</li>
+            <li>Perda de CPT: CPT Miss ou pickup = dia do 201, 202 dia diferente</li>
             <li>Erro de Departure: pickup = dia do 201, sem 202</li>
         </ul>
         <h3 style="margin-top:10px;">Regras de Bucket (MNR):</h3>
@@ -70,18 +67,15 @@
             <li>MNR - UTR last bip: Route passa por node PN</li>
             <li>MNR - OTR last bip: Demais casos</li>
         </ul>
-        <h3 style="margin-top:10px;">Regras de Sub-Bucket:</h3>
+        <h3 style="margin-top:10px;">Sub-Bucket automatico:</h3>
         <ul>
             <li class="sub">MNR-OTR / APP finalizado: Atraso DA</li>
             <li class="sub">MNR-UTR / Perda de CPT / Erro Stow: Erro operacional</li>
-            <li class="sub">Missort: Missort</li>
-            <li class="sub">Demais: em branco (preenchimento manual)</li>
+            <li class="sub">Missort: Missort | Demais: em branco</li>
         </ul>
     </div>
-
     <div class="container">
         <div class="error" id="errorMsg"></div>
-
         <div class="section">
             <div class="section-title">1. Carregar arquivo Modelo EAD (.xlsx)</div>
             <div class="drop-zone" id="dropZone">
@@ -91,12 +85,10 @@
             </div>
             <input type="file" id="fileInput" accept=".xlsx">
         </div>
-
         <div class="loading" id="loading">
             <div class="spinner"></div>
             <p>Classificando Buckets...</p>
         </div>
-
         <div class="section results" id="results">
             <div class="section-title">2. Resultado <span class="tag tag-utr">UTR</span> <span class="tag tag-mnr">MNR</span></div>
             <div class="stat-grid">
@@ -104,289 +96,199 @@
                 <div class="stat-box utr"><div class="value" id="utrTotal">0</div><div class="label">UTR Error</div></div>
                 <div class="stat-box mnr"><div class="value" id="mnrTotal">0</div><div class="label">MNR</div></div>
             </div>
-
             <table class="bucket-table" id="bucketTable">
                 <thead><tr><th>Bucket</th><th>Qtd</th><th>%</th></tr></thead>
                 <tbody id="bucketBody"></tbody>
             </table>
-
             <hr class="separator">
-
             <div class="section-title">3. Download</div>
             <div class="buttons">
                 <button class="btn btn-class" onclick="downloadResult()">&#x1F4CA; Download Classificado (.xlsx)</button>
             </div>
         </div>
     </div>
-
-    <div class="version">EAD Classifier v2.1 | Preenche Bucket + Sub-Bucket automaticamente</div>
-
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+    <div class="version">EAD Classifier v2.2</div>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script>
+    (function(){
         var PN_NODES = ['EVE8','EIJ8','EME8','EJO8','EUM8','EMR8','EOZ8'];
-        var SPC_NODES = ['ECB8','ESE8','ERS8','ESB8','ELO8','EGO8'];
+        var SUB_MAP = {};
+        SUB_MAP['MNR - OTR last bip'] = 'Atraso DA';
+        SUB_MAP['APP finalizado e nao processado'] = 'Atraso DA';
+        SUB_MAP['MNR - UTR last bip'] = 'Erro operacional';
+        SUB_MAP['Perda de CPT'] = 'Erro operacional';
+        SUB_MAP['Erro Stow'] = 'Erro operacional';
+        SUB_MAP['Missort'] = 'Missort';
 
-        var SUB_BUCKET_MAP = {
-            'MNR - OTR last bip': 'Atraso DA',
-            'APP finalizado e nao processado': 'Atraso DA',
-            'MNR - UTR last bip': 'Erro operacional',
-            'Perda de CPT': 'Erro operacional',
-            'Erro Stow': 'Erro operacional',
-            'Missort': 'Missort'
-        };
+        var gHeaders = [];
+        var gData = [];
 
-        var resultData = [];
-        var resultHeaders = [];
-
-        window.addEventListener('load', function() {
-            if (typeof XLSX === 'undefined') {
-                var el = document.getElementById('errorMsg');
-                el.textContent = 'Erro: Biblioteca nao carregou. Abra com internet pelo menos uma vez.';
-                el.style.display = 'block';
+        function extractDate(val){
+            if(val===null||val===undefined) return '';
+            if(typeof val==='number'){
+                var d=XLSX.SSF.parse_date_code(val);
+                if(d) return d.y+'-'+String(d.m).padStart(2,'0')+'-'+String(d.d).padStart(2,'0');
             }
-        });
-
-        var dropZone = document.getElementById('dropZone');
-        var fileInput = document.getElementById('fileInput');
-
-        dropZone.addEventListener('click', function() { fileInput.click(); });
-        dropZone.addEventListener('dragover', function(e) { e.preventDefault(); dropZone.classList.add('dragover'); });
-        dropZone.addEventListener('dragleave', function() { dropZone.classList.remove('dragover'); });
-        dropZone.addEventListener('drop', function(e) {
-            e.preventDefault();
-            dropZone.classList.remove('dragover');
-            if (e.dataTransfer.files.length > 0) {
-                processFile(e.dataTransfer.files);
-            }
-        });
-        fileInput.addEventListener('change', function(e) {
-            if (e.target.files.length > 0) {
-                processFile(e.target.files);
-            }
-        });
-
-        function extractDate(val) {
-            if (val === null || val === undefined) return '';
-            var str = String(val).trim();
-            if (str === '' || str === 'NaN' || str === 'None' || str === 'nan' || str === 'NaT') return '';
-
-            if (typeof val === 'number') {
-                var d = XLSX.SSF.parse_date_code(val);
-                if (d) return d.y + '-' + String(d.m).padStart(2,'0') + '-' + String(d.d).padStart(2,'0');
-            }
-
-            var iso = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
-            if (iso) return iso + '-' + iso + '-' + iso;
-
-            var br = str.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
-            if (br) return br + '-' + br + '-' + br;
-
+            var s=String(val).trim();
+            if(s===''||s==='NaN'||s==='None'||s==='nan'||s==='NaT') return '';
+            var iso=s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if(iso){ return s.substring(0,10); }
+            var br=s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+            if(br){ return s.substring(6,10)+'-'+s.substring(3,5)+'-'+s.substring(0,2); }
             return '';
         }
 
-        function hasValue(val) {
-            if (val === null || val === undefined) return false;
-            var str = String(val).trim().toLowerCase();
-            return str !== '' && str !== 'nan' && str !== 'none' && str !== 'nat' && str !== '-';
+        function hasVal(v){
+            if(v===null||v===undefined) return false;
+            var s=String(v).trim().toLowerCase();
+            return s!==''&&s!=='nan'&&s!=='none'&&s!=='nat'&&s!=='-';
         }
 
-        function routeHasPN(route) {
-            if (!route) return false;
-            var parts = String(route).split('->');
-            for (var i = 0; i < parts.length; i++) {
-                if (PN_NODES.indexOf(parts[i].trim()) !== -1) return true;
+        function routeHasPN(route){
+            if(!route) return false;
+            var parts=String(route).split('->');
+            for(var i=0;i<parts.length;i++){
+                if(PN_NODES.indexOf(parts[i].trim())!==-1) return true;
             }
             return false;
         }
 
-        function classifyBucket(classificacao, cptStatus, pickup, ev201, ev202, route) {
-            var cls = String(classificacao || '').trim();
-            var cpt = String(cptStatus || '').trim();
-            var has201 = hasValue(ev201);
-            var has202 = hasValue(ev202);
-
-            if (cls === 'UTR Error') {
-                if (cpt === 'CPT Miss') {
-                    return 'Perda de CPT';
-                }
-                var pickupDate = extractDate(pickup);
-                var date201 = extractDate(ev201);
-                var date202 = extractDate(ev202);
-
-                if (has201) {
-                    var sameDay = (pickupDate !== '' && date201 !== '' && pickupDate === date201);
-                    if (sameDay) {
-                        if (!has202) return 'Erro de Departure';
-                        var same202 = (pickupDate !== '' && date202 !== '' && pickupDate === date202);
-                        if (same202) return 'APP finalizado e nao processado';
+        function classify(cls,cpt,pickup,e201,e202,route){
+            var c=String(cls||'').trim();
+            var has201=hasVal(e201);
+            var has202=hasVal(e202);
+            if(c==='UTR Error'){
+                if(String(cpt||'').trim()==='CPT Miss') return 'Perda de CPT';
+                var dPickup=extractDate(pickup);
+                var d201=extractDate(e201);
+                var d202=extractDate(e202);
+                if(has201){
+                    if(dPickup&&d201&&dPickup===d201){
+                        if(!has202) return 'Erro de Departure';
+                        if(dPickup&&d202&&dPickup===d202) return 'APP finalizado e nao processado';
                         return 'Perda de CPT';
                     } else {
-                        if (!has202) return 'Erro de Departure';
+                        if(!has202) return 'Erro de Departure';
                         return 'Atraso na chegada no SPC';
                     }
                 }
-                if (has202 && !has201) return 'Erro Stow';
+                if(has202&&!has201) return 'Erro Stow';
                 return 'Atraso na chegada no SPC';
             }
-
-            if (cls === 'MNR') {
-                if (routeHasPN(route)) return 'MNR - UTR last bip';
+            if(c==='MNR'){
+                if(routeHasPN(route)) return 'MNR - UTR last bip';
                 return 'MNR - OTR last bip';
             }
-
             return '';
         }
 
-        function getSubBucket(bucket) {
-            if (SUB_BUCKET_MAP.hasOwnProperty(bucket)) return SUB_BUCKET_MAP[bucket];
-            return '';
-        }
+        var dropZone=document.getElementById('dropZone');
+        var fileInput=document.getElementById('fileInput');
+        dropZone.addEventListener('click',function(){fileInput.click();});
+        dropZone.addEventListener('dragover',function(e){e.preventDefault();dropZone.classList.add('dragover');});
+        dropZone.addEventListener('dragleave',function(){dropZone.classList.remove('dragover');});
+        dropZone.addEventListener('drop',function(e){
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            var f=e.dataTransfer.files.item(0);
+            if(f) processFile(f);
+        });
+        fileInput.addEventListener('change',function(e){
+            var f=e.target.files.item(0);
+            if(f) processFile(f);
+        });
 
-        function processFile(file) {
-            if (!file.name.endsWith('.xlsx')) {
-                alert('Selecione um arquivo .xlsx');
-                return;
-            }
-
-            document.getElementById('loading').style.display = 'block';
-            document.getElementById('results').style.display = 'none';
-            document.getElementById('errorMsg').style.display = 'none';
-
-            var reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    var wb = XLSX.read(e.target.result, { type: 'array', cellDates: false });
-                    var sheetName = wb.SheetNames;
-                    var sheet = wb.Sheets[sheetName];
-                    var data = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true });
-
-                    if (data.length < 2) throw new Error('Arquivo vazio');
-
-                    resultHeaders = data;
-                    var rows = data.slice(1);
-
-                    var h = [];
-                    for (var i = 0; i < resultHeaders.length; i++) {
-                        h.push(String(resultHeaders[i] || '').trim().toLowerCase());
+        function processFile(file){
+            if(!file.name.endsWith('.xlsx')){alert('Selecione .xlsx');return;}
+            document.getElementById('loading').style.display='block';
+            document.getElementById('results').style.display='none';
+            document.getElementById('errorMsg').style.display='none';
+            var reader=new FileReader();
+            reader.onload=function(ev){
+                try{
+                    var wb=XLSX.read(ev.target.result,{type:'array',cellDates:false});
+                    var sNames=wb.SheetNames.slice();
+                    var sheetName=sNames.shift();
+                    var sheet=wb.Sheets[sheetName];
+                    var data=XLSX.utils.sheet_to_json(sheet,{header:1,raw:true,defval:''});
+                    if(data.length<2) throw new Error('Arquivo vazio');
+                    var headerRow=data.shift();
+                    gHeaders=headerRow;
+                    var h=[];
+                    for(var i=0;i<headerRow.length;i++){h.push(String(headerRow[i]||'').trim().toLowerCase());}
+                    var ri=h.indexOf('route');
+                    var ni=h.indexOf('node');
+                    var pi=-1,e1i=-1,e2i=-1,ci=-1,cpi=-1,bi=-1,si=-1;
+                    for(var j=0;j<h.length;j++){
+                        if(h[j].indexOf('expected_pickup')!==-1) pi=j;
+                        if(h[j].indexOf('arrived')!==-1||h[j].indexOf('event_201')!==-1) e1i=j;
+                        if(h[j].indexOf('departure')!==-1||h[j].indexOf('event_202')!==-1) e2i=j;
+                        if(h[j].indexOf('classifica')!==-1) ci=j;
+                        if(h[j].indexOf('cpt')!==-1) cpi=j;
+                        if(h[j]==='bucket') bi=j;
+                        if(h[j].indexOf('sub-bucket')!==-1||h[j].indexOf('sub_bucket')!==-1) si=j;
                     }
-
-                    var routeIdx = h.indexOf('route');
-                    var nodeIdx = h.indexOf('node');
-                    var pickupIdx = -1;
-                    var ev201Idx = -1;
-                    var ev202Idx = -1;
-                    var clsIdx = -1;
-                    var cptIdx = -1;
-                    var bucketIdx = -1;
-                    var subIdx = -1;
-
-                    for (var j = 0; j < h.length; j++) {
-                        if (h[j].indexOf('expected_pickup') !== -1) pickupIdx = j;
-                        if (h[j].indexOf('arrived') !== -1 || h[j].indexOf('event_201') !== -1) ev201Idx = j;
-                        if (h[j].indexOf('departure') !== -1 || h[j].indexOf('event_202') !== -1) ev202Idx = j;
-                        if (h[j].indexOf('classifica') !== -1) clsIdx = j;
-                        if (h[j].indexOf('cpt') !== -1) cptIdx = j;
-                        if (h[j] === 'bucket') bucketIdx = j;
-                        if (h[j].indexOf('sub-bucket') !== -1 || h[j].indexOf('sub_bucket') !== -1) subIdx = j;
+                    if(ci===-1) throw new Error('Coluna Classificacao nao encontrada');
+                    if(bi===-1) throw new Error('Coluna Bucket nao encontrada');
+                    gData=[];
+                    var uC=0,mC=0,bCounts={};
+                    for(var r=0;r<data.length;r++){
+                        var row=data[r];
+                        if(!row||row.length===0) continue;
+                        var classificacao=row[ci]||'';
+                        var cptStatus=cpi>=0?(row[cpi]||''):'';
+                        var pickup=pi>=0?(row[pi]||''):'';
+                        var ev201=e1i>=0?(row[e1i]||''):'';
+                        var ev202=e2i>=0?(row[e2i]||''):'';
+                        var route=ri>=0?(row[ri]||''):'';
+                        var clsStr=String(classificacao).trim();
+                        if(clsStr==='UTR Error') uC++;
+                        if(clsStr==='MNR') mC++;
+                        var bucket=classify(classificacao,cptStatus,pickup,ev201,ev202,route);
+                        var subBucket=SUB_MAP.hasOwnProperty(bucket)?SUB_MAP[bucket]:'';
+                        var nRow=row.slice();
+                        while(nRow.length<gHeaders.length) nRow.push('');
+                        nRow[bi]=bucket;
+                        if(si>=0) nRow[si]=subBucket;
+                        gData.push(nRow);
+                        var bk=bucket||'Sem classificacao';
+                        bCounts[bk]=(bCounts[bk]||0)+1;
                     }
-
-                    if (clsIdx === -1) throw new Error('Coluna Classificacao nao encontrada');
-                    if (bucketIdx === -1) throw new Error('Coluna Bucket nao encontrada');
-
-                    resultData = [];
-                    var utrCount = 0;
-                    var mnrCount = 0;
-                    var bucketCounts = {};
-
-                    for (var r = 0; r < rows.length; r++) {
-                        var row = rows[r];
-                        if (!row || row.length === 0) continue;
-
-                        var classificacao = row[clsIdx] || '';
-                        var cptStatus = cptIdx >= 0 ? (row[cptIdx] || '') : '';
-                        var pickup = pickupIdx >= 0 ? (row[pickupIdx] || '') : '';
-                        var ev201 = ev201Idx >= 0 ? (row[ev201Idx] || '') : '';
-                        var ev202 = ev202Idx >= 0 ? (row[ev202Idx] || '') : '';
-                        var route = routeIdx >= 0 ? (row[routeIdx] || '') : '';
-
-                        var cls = String(classificacao).trim();
-                        if (cls === 'UTR Error') utrCount++;
-                        if (cls === 'MNR') mnrCount++;
-
-                        var bucket = classifyBucket(classificacao, cptStatus, pickup, ev201, ev202, route);
-                        var subBucket = getSubBucket(bucket);
-
-                        var newRow = row.slice();
-                        while (newRow.length < resultHeaders.length) newRow.push('');
-                        newRow[bucketIdx] = bucket;
-                        if (subIdx >= 0) newRow[subIdx] = subBucket;
-
-                        resultData.push(newRow);
-
-                        var bKey = bucket || 'Sem classificacao';
-                        bucketCounts[bKey] = (bucketCounts[bKey] || 0) + 1;
+                    var total=gData.length;
+                    document.getElementById('totalRows').textContent=total.toLocaleString('pt-BR');
+                    document.getElementById('utrTotal').textContent=uC.toLocaleString('pt-BR');
+                    document.getElementById('mnrTotal').textContent=mC.toLocaleString('pt-BR');
+                    var entries=[];
+                    for(var key in bCounts){if(bCounts.hasOwnProperty(key))entries.push({n:key,c:bCounts[key]});}
+                    entries.sort(function(a,b){return b.c-a.c;});
+                    var bHTML='';
+                    for(var k=0;k<entries.length;k++){
+                        var pct=((entries[k].c/(total||1))*100).toFixed(1);
+                        bHTML+='<tr><td>'+entries[k].n+'</td><td>'+entries[k].c+'</td><td>'+pct+'%</td></tr>';
                     }
-
-                    var total = resultData.length;
-                    document.getElementById('totalRows').textContent = total.toLocaleString('pt-BR');
-                    document.getElementById('utrTotal').textContent = utrCount.toLocaleString('pt-BR');
-                    document.getElementById('mnrTotal').textContent = mnrCount.toLocaleString('pt-BR');
-
-                    var entries = [];
-                    for (var key in bucketCounts) {
-                        if (bucketCounts.hasOwnProperty(key)) {
-                            entries.push([key, bucketCounts[key]]);
-                        }
-                    }
-                    entries.sort(function(a, b) { return b - a; });
-
-                    var bHTML = '';
-                    for (var k = 0; k < entries.length; k++) {
-                        var bName = entries[k];
-                        var bCount = entries[k];
-                        var pct = ((bCount / (total || 1)) * 100).toFixed(1);
-                        bHTML += '<tr><td>' + bName + '</td><td>' + bCount + '</td><td>' + pct + '%</td></tr>';
-                    }
-                    document.getElementById('bucketBody').innerHTML = bHTML;
-
-                    document.getElementById('loading').style.display = 'none';
-                    document.getElementById('results').style.display = 'block';
-
-                } catch (err) {
-                    document.getElementById('loading').style.display = 'none';
-                    var el = document.getElementById('errorMsg');
-                    el.textContent = 'Erro: ' + err.message;
-                    el.style.display = 'block';
+                    document.getElementById('bucketBody').innerHTML=bHTML;
+                    document.getElementById('loading').style.display='none';
+                    document.getElementById('results').style.display='block';
+                }catch(err){
+                    document.getElementById('loading').style.display='none';
+                    var el=document.getElementById('errorMsg');
+                    el.textContent='Erro: '+err.message;
+                    el.style.display='block';
                 }
             };
             reader.readAsArrayBuffer(file);
         }
 
-        function downloadResult() {
-            if (!resultData.length) return;
-
-            var allData = [resultHeaders].concat(resultData);
-            var ws = XLSX.utils.aoa_to_sheet(allData);
-
-            ws['!cols'] = [
-                {wch:16},{wch:44},{wch:13},{wch:31},{wch:31},
-                {wch:31},{wch:31},{wch:13},{wch:13},{wch:49},{wch:26},{wch:43}
-            ];
-
-            var wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, 'Classificado');
-            var wbout = XLSX.write(wb, {bookType:'xlsx', type:'array'});
-            var blob = new Blob([wbout], {type:'application/octet-stream'});
-
-            var url = URL.createObjectURL(blob);
-            var a = document.createElement('a');
-            a.href = url;
-            a.download = 'ead_classificado.xlsx';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
+        window.downloadResult=function(){
+            if(!gData.length) return;
+            var all=[gHeaders].concat(gData);
+            var ws=XLSX.utils.aoa_to_sheet(all);
+            ws['!cols']=[{wch:16},{wch:44},{wch:13},{wch:31},{wch:31},{wch:31},{wch:31},{wch:13},{wch:13},{wch:49},{wch:26},{wch:43}];
+            var wb=XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb,ws,'Classificado');
+            XLSX.writeFile(wb,'ead_classificado.xlsx');
+        };
+    })();
     </script>
 </body>
 </html>
