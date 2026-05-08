@@ -14,9 +14,9 @@
         .rules-info h3 { color: #00d4ff; font-size: 0.9em; margin-bottom: 8px; }
         .rules-info ul { list-style: none; padding: 0; }
         .rules-info li { padding: 3px 0; font-size: 0.8em; color: #ccc; }
-        .rules-info li::before { content: "⚡"; margin-right: 6px; }
+        .rules-info li::before { content: "\26A1"; margin-right: 6px; }
         .rules-info .sub { margin-left: 20px; font-size: 0.75em; color: #999; }
-        .rules-info .sub::before { content: "→"; margin-right: 4px; }
+        .rules-info .sub::before { content: "\2192"; margin-right: 4px; }
         .container { background: #16213e; border-radius: 12px; padding: 30px; max-width: 700px; width: 100%; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
         .section { margin-bottom: 25px; }
         .section-title { font-size: 1em; color: #00d4ff; margin-bottom: 12px; font-weight: 600; }
@@ -32,7 +32,6 @@
         .stat-box .label { font-size: 0.7em; color: #888; margin-top: 4px; }
         .stat-box.utr .value { color: #fbbf24; }
         .stat-box.mnr .value { color: #a78bfa; }
-        .stat-box.cpt .value { color: #f87171; }
         .bucket-table { width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 0.78em; }
         .bucket-table th { text-align: left; color: #00d4ff; padding: 6px 8px; border-bottom: 1px solid #0f3460; font-weight: 500; }
         .bucket-table td { padding: 5px 8px; border-bottom: 1px solid #0a1628; color: #ccc; }
@@ -40,7 +39,6 @@
         .btn { display: inline-block; padding: 12px 24px; border: none; border-radius: 8px; font-size: 0.9em; cursor: pointer; transition: all 0.3s; text-decoration: none; margin: 5px; }
         .btn-class { background: #6366f1; color: #fff; }
         .btn-class:hover { background: #4f46e5; }
-        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
         .buttons { text-align: center; }
         .loading { display: none; text-align: center; padding: 20px; }
         .loading .spinner { border: 3px solid #0f3460; border-top: 3px solid #00d4ff; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 0 auto 10px; }
@@ -87,7 +85,7 @@
         <div class="section">
             <div class="section-title">1. Carregar arquivo Modelo EAD (.xlsx)</div>
             <div class="drop-zone" id="dropZone">
-                <div class="icon">📂</div>
+                <div class="icon">&#x1F4C2;</div>
                 Arraste o arquivo .xlsx aqui ou clique para selecionar
                 <p>Formato Modelo: 12 colunas com Classificacao e CPT Status ja preenchidos</p>
             </div>
@@ -116,19 +114,19 @@
 
             <div class="section-title">3. Download</div>
             <div class="buttons">
-                <button class="btn btn-class" onclick="downloadResult()">📊 Download Classificado (.xlsx)</button>
+                <button class="btn btn-class" onclick="downloadResult()">&#x1F4CA; Download Classificado (.xlsx)</button>
             </div>
         </div>
     </div>
 
-    <div class="version">EAD Classifier v2.0 | Preenche Bucket + Sub-Bucket automaticamente</div>
+    <div class="version">EAD Classifier v2.1 | Preenche Bucket + Sub-Bucket automaticamente</div>
 
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <script>
-        const PN_NODES = ['EVE8','EIJ8','EME8','EJO8','EUM8','EMR8','EOZ8'];
-        const SPC_NODES = ['ECB8','ESE8','ERS8','ESB8','ELO8','EGO8'];
+        var PN_NODES = ['EVE8','EIJ8','EME8','EJO8','EUM8','EMR8','EOZ8'];
+        var SPC_NODES = ['ECB8','ESE8','ERS8','ESB8','ELO8','EGO8'];
 
-        const SUB_BUCKET_MAP = {
+        var SUB_BUCKET_MAP = {
             'MNR - OTR last bip': 'Atraso DA',
             'APP finalizado e nao processado': 'Atraso DA',
             'MNR - UTR last bip': 'Erro operacional',
@@ -137,8 +135,8 @@
             'Missort': 'Missort'
         };
 
-        let resultData = [];
-        let resultHeaders = [];
+        var resultData = [];
+        var resultHeaders = [];
 
         window.addEventListener('load', function() {
             if (typeof XLSX === 'undefined') {
@@ -157,28 +155,29 @@
         dropZone.addEventListener('drop', function(e) {
             e.preventDefault();
             dropZone.classList.remove('dragover');
-            if (e.dataTransfer.files.length) processFile(e.dataTransfer.files);
+            if (e.dataTransfer.files.length > 0) {
+                processFile(e.dataTransfer.files);
+            }
         });
         fileInput.addEventListener('change', function(e) {
-            if (e.target.files.length) processFile(e.target.files);
+            if (e.target.files.length > 0) {
+                processFile(e.target.files);
+            }
         });
 
         function extractDate(val) {
-            if (!val) return '';
+            if (val === null || val === undefined) return '';
             var str = String(val).trim();
-            if (!str || str === 'NaN' || str === 'None' || str === 'nan' || str === 'NaT') return '';
+            if (str === '' || str === 'NaN' || str === 'None' || str === 'nan' || str === 'NaT') return '';
 
-            // Excel serial number
             if (typeof val === 'number') {
                 var d = XLSX.SSF.parse_date_code(val);
                 if (d) return d.y + '-' + String(d.m).padStart(2,'0') + '-' + String(d.d).padStart(2,'0');
             }
 
-            // ISO format: 2026-05-05 or 2026-05-05 19:59:00
             var iso = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
-            if (iso) return iso;
+            if (iso) return iso + '-' + iso + '-' + iso;
 
-            // BR format: 27/04/2026 22:00
             var br = str.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
             if (br) return br + '-' + br + '-' + br;
 
@@ -193,64 +192,45 @@
 
         function routeHasPN(route) {
             if (!route) return false;
-            var parts = String(route).split('->').map(function(s) { return s.trim(); });
-            return parts.some(function(p) { return PN_NODES.indexOf(p) !== -1; });
+            var parts = String(route).split('->');
+            for (var i = 0; i < parts.length; i++) {
+                if (PN_NODES.indexOf(parts[i].trim()) !== -1) return true;
+            }
+            return false;
         }
 
-        function classifyBucket(classificacao, cptStatus, pickup, ev201, ev202, route, node) {
+        function classifyBucket(classificacao, cptStatus, pickup, ev201, ev202, route) {
             var cls = String(classificacao || '').trim();
             var cpt = String(cptStatus || '').trim();
-
             var has201 = hasValue(ev201);
             var has202 = hasValue(ev202);
 
-            // === UTR Error ===
             if (cls === 'UTR Error') {
+                if (cpt === 'CPT Miss') {
+                    return 'Perda de CPT';
+                }
                 var pickupDate = extractDate(pickup);
                 var date201 = extractDate(ev201);
                 var date202 = extractDate(ev202);
 
-                // CPT Miss = Perda de CPT
-                if (cpt === 'CPT Miss') {
-                    return 'Perda de CPT';
-                }
-
-                // Stow Miss cases
                 if (has201) {
-                    var sameDay_pickup_201 = pickupDate && date201 && pickupDate === date201;
-
-                    if (sameDay_pickup_201) {
-                        if (!has202) {
-                            return 'Erro de Departure';
-                        }
-                        var sameDay_pickup_202 = pickupDate && date202 && pickupDate === date202;
-                        if (sameDay_pickup_202) {
-                            return 'APP finalizado e nao processado';
-                        } else {
-                            return 'Perda de CPT';
-                        }
+                    var sameDay = (pickupDate !== '' && date201 !== '' && pickupDate === date201);
+                    if (sameDay) {
+                        if (!has202) return 'Erro de Departure';
+                        var same202 = (pickupDate !== '' && date202 !== '' && pickupDate === date202);
+                        if (same202) return 'APP finalizado e nao processado';
+                        return 'Perda de CPT';
                     } else {
-                        // 201 on different day than pickup
-                        if (!has202) {
-                            return 'Erro de Departure';
-                        }
+                        if (!has202) return 'Erro de Departure';
                         return 'Atraso na chegada no SPC';
                     }
                 }
-
-                // Has 202 but no 201
-                if (has202 && !has201) {
-                    return 'Erro Stow';
-                }
-
+                if (has202 && !has201) return 'Erro Stow';
                 return 'Atraso na chegada no SPC';
             }
 
-            // === MNR ===
             if (cls === 'MNR') {
-                if (routeHasPN(route)) {
-                    return 'MNR - UTR last bip';
-                }
+                if (routeHasPN(route)) return 'MNR - UTR last bip';
                 return 'MNR - OTR last bip';
             }
 
@@ -258,7 +238,8 @@
         }
 
         function getSubBucket(bucket) {
-            return SUB_BUCKET_MAP[bucket] || '';
+            if (SUB_BUCKET_MAP.hasOwnProperty(bucket)) return SUB_BUCKET_MAP[bucket];
+            return '';
         }
 
         function processFile(file) {
@@ -275,7 +256,8 @@
             reader.onload = function(e) {
                 try {
                     var wb = XLSX.read(e.target.result, { type: 'array', cellDates: false });
-                    var sheet = wb.Sheets[wb.SheetNames];
+                    var sheetName = wb.SheetNames;
+                    var sheet = wb.Sheets[sheetName];
                     var data = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true });
 
                     if (data.length < 2) throw new Error('Arquivo vazio');
@@ -283,70 +265,88 @@
                     resultHeaders = data;
                     var rows = data.slice(1);
 
-                    // Find column indices
-                    var h = resultHeaders.map(function(x) { return String(x || '').trim().toLowerCase(); });
+                    var h = [];
+                    for (var i = 0; i < resultHeaders.length; i++) {
+                        h.push(String(resultHeaders[i] || '').trim().toLowerCase());
+                    }
+
                     var routeIdx = h.indexOf('route');
                     var nodeIdx = h.indexOf('node');
-                    var pickupIdx = h.findIndex(function(x) { return x.indexOf('expected_pickup') !== -1; });
-                    var ev201Idx = h.findIndex(function(x) { return x.indexOf('arrived') !== -1 || x.indexOf('event_201') !== -1; });
-                    var ev202Idx = h.findIndex(function(x) { return x.indexOf('departure') !== -1 || x.indexOf('event_202') !== -1; });
-                    var clsIdx = h.findIndex(function(x) { return x.indexOf('classifica') !== -1; });
-                    var cptIdx = h.findIndex(function(x) { return x.indexOf('cpt') !== -1; });
-                    var bucketIdx = h.indexOf('bucket');
-                    var subIdx = h.findIndex(function(x) { return x.indexOf('sub-bucket') !== -1 || x.indexOf('sub_bucket') !== -1; });
+                    var pickupIdx = -1;
+                    var ev201Idx = -1;
+                    var ev202Idx = -1;
+                    var clsIdx = -1;
+                    var cptIdx = -1;
+                    var bucketIdx = -1;
+                    var subIdx = -1;
 
-                    if (clsIdx === -1) throw new Error('Coluna "Classificacao" nao encontrada');
-                    if (bucketIdx === -1) throw new Error('Coluna "Bucket" nao encontrada');
+                    for (var j = 0; j < h.length; j++) {
+                        if (h[j].indexOf('expected_pickup') !== -1) pickupIdx = j;
+                        if (h[j].indexOf('arrived') !== -1 || h[j].indexOf('event_201') !== -1) ev201Idx = j;
+                        if (h[j].indexOf('departure') !== -1 || h[j].indexOf('event_202') !== -1) ev202Idx = j;
+                        if (h[j].indexOf('classifica') !== -1) clsIdx = j;
+                        if (h[j].indexOf('cpt') !== -1) cptIdx = j;
+                        if (h[j] === 'bucket') bucketIdx = j;
+                        if (h[j].indexOf('sub-bucket') !== -1 || h[j].indexOf('sub_bucket') !== -1) subIdx = j;
+                    }
+
+                    if (clsIdx === -1) throw new Error('Coluna Classificacao nao encontrada');
+                    if (bucketIdx === -1) throw new Error('Coluna Bucket nao encontrada');
 
                     resultData = [];
-                    var utrCount = 0, mnrCount = 0;
+                    var utrCount = 0;
+                    var mnrCount = 0;
                     var bucketCounts = {};
 
-                    rows.forEach(function(row) {
-                        if (!row || row.length === 0) return;
+                    for (var r = 0; r < rows.length; r++) {
+                        var row = rows[r];
+                        if (!row || row.length === 0) continue;
 
-                        var classificacao = row[clsIdx];
-                        var cptStatus = cptIdx >= 0 ? row[cptIdx] : '';
-                        var pickup = pickupIdx >= 0 ? row[pickupIdx] : '';
-                        var ev201 = ev201Idx >= 0 ? row[ev201Idx] : '';
-                        var ev202 = ev202Idx >= 0 ? row[ev202Idx] : '';
-                        var route = routeIdx >= 0 ? row[routeIdx] : '';
-                        var node = nodeIdx >= 0 ? row[nodeIdx] : '';
+                        var classificacao = row[clsIdx] || '';
+                        var cptStatus = cptIdx >= 0 ? (row[cptIdx] || '') : '';
+                        var pickup = pickupIdx >= 0 ? (row[pickupIdx] || '') : '';
+                        var ev201 = ev201Idx >= 0 ? (row[ev201Idx] || '') : '';
+                        var ev202 = ev202Idx >= 0 ? (row[ev202Idx] || '') : '';
+                        var route = routeIdx >= 0 ? (row[routeIdx] || '') : '';
 
-                        var cls = String(classificacao || '').trim();
+                        var cls = String(classificacao).trim();
                         if (cls === 'UTR Error') utrCount++;
                         if (cls === 'MNR') mnrCount++;
 
-                        // Classify Bucket
-                        var bucket = classifyBucket(classificacao, cptStatus, pickup, ev201, ev202, route, node);
+                        var bucket = classifyBucket(classificacao, cptStatus, pickup, ev201, ev202, route);
                         var subBucket = getSubBucket(bucket);
 
-                        // Update row
                         var newRow = row.slice();
                         while (newRow.length < resultHeaders.length) newRow.push('');
-                        if (bucketIdx >= 0) newRow[bucketIdx] = bucket;
+                        newRow[bucketIdx] = bucket;
                         if (subIdx >= 0) newRow[subIdx] = subBucket;
 
                         resultData.push(newRow);
 
-                        var b = bucket || 'Sem classificacao';
-                        bucketCounts[b] = (bucketCounts[b] || 0) + 1;
-                    });
+                        var bKey = bucket || 'Sem classificacao';
+                        bucketCounts[bKey] = (bucketCounts[bKey] || 0) + 1;
+                    }
 
-                    // Update UI
                     var total = resultData.length;
                     document.getElementById('totalRows').textContent = total.toLocaleString('pt-BR');
                     document.getElementById('utrTotal').textContent = utrCount.toLocaleString('pt-BR');
                     document.getElementById('mnrTotal').textContent = mnrCount.toLocaleString('pt-BR');
 
+                    var entries = [];
+                    for (var key in bucketCounts) {
+                        if (bucketCounts.hasOwnProperty(key)) {
+                            entries.push([key, bucketCounts[key]]);
+                        }
+                    }
+                    entries.sort(function(a, b) { return b - a; });
+
                     var bHTML = '';
-                    Object.entries(bucketCounts)
-                        .sort(function(a, b) { return b - a; })
-                        .forEach(function(entry) {
-                            var bucket = entry, count = entry;
-                            var pct = ((count / (total || 1)) * 100).toFixed(1);
-                            bHTML += '<tr><td>' + bucket + '</td><td>' + count + '</td><td>' + pct + '%</td></tr>';
-                        });
+                    for (var k = 0; k < entries.length; k++) {
+                        var bName = entries[k];
+                        var bCount = entries[k];
+                        var pct = ((bCount / (total || 1)) * 100).toFixed(1);
+                        bHTML += '<tr><td>' + bName + '</td><td>' + bCount + '</td><td>' + pct + '%</td></tr>';
+                    }
                     document.getElementById('bucketBody').innerHTML = bHTML;
 
                     document.getElementById('loading').style.display = 'none';
