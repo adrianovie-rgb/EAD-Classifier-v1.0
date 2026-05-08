@@ -1,23 +1,22 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EAD Classifier</title>
+    <title>Oblt Cleaner</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #1a1a2e; color: #e0e0e0; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 20px; }
-        .header { text-align: center; margin-bottom: 20px; }
+        .header { text-align: center; margin-bottom: 30px; }
         .header h1 { font-size: 2em; color: #00d4ff; margin-bottom: 5px; }
         .header p { color: #888; font-size: 0.85em; }
-        .rules-info { background: #16213e; border: 1px solid #0f3460; border-radius: 8px; padding: 12px 18px; margin-bottom: 20px; max-width: 700px; width: 100%; }
+        .rules-info { background: #16213e; border: 1px solid #0f3460; border-radius: 8px; padding: 12px 18px; margin-bottom: 20px; max-width: 600px; width: 100%; }
         .rules-info h3 { color: #00d4ff; font-size: 0.9em; margin-bottom: 8px; }
         .rules-info ul { list-style: none; padding: 0; }
-        .rules-info li { padding: 3px 0; font-size: 0.8em; color: #ccc; }
+        .rules-info li { padding: 4px 0; font-size: 0.82em; color: #ccc; }
         .rules-info li::before { content: "⚡"; margin-right: 6px; }
-        .rules-info .sub { margin-left: 20px; font-size: 0.75em; color: #999; }
-        .rules-info .sub::before { content: "→"; margin-right: 4px; }
-        .container { background: #16213e; border-radius: 12px; padding: 30px; max-width: 700px; width: 100%; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+        .container { background: #16213e; border-radius: 12px; padding: 30px; max-width: 600px; width: 100%; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
         .section { margin-bottom: 25px; }
         .section-title { font-size: 1em; color: #00d4ff; margin-bottom: 12px; font-weight: 600; }
         .drop-zone { border: 2px dashed #0f3460; border-radius: 8px; padding: 40px 20px; text-align: center; cursor: pointer; transition: all 0.3s; }
@@ -26,413 +25,292 @@
         .drop-zone .icon { font-size: 2em; }
         #fileInput { display: none; }
         .results { display: none; }
-        .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 15px; }
+        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
         .stat-box { background: #0f3460; border-radius: 8px; padding: 12px; text-align: center; }
-        .stat-box .value { font-size: 1.4em; font-weight: bold; color: #00d4ff; }
-        .stat-box .label { font-size: 0.7em; color: #888; margin-top: 4px; }
+        .stat-box .value { font-size: 1.5em; font-weight: bold; color: #00d4ff; }
+        .stat-box .label { font-size: 0.75em; color: #888; margin-top: 4px; }
+        .stat-box.removed .value { color: #ff6b6b; }
         .stat-box.rule1 .value { color: #ffa500; }
         .stat-box.rule2 .value { color: #ff69b4; }
-        .stat-box.utr .value { color: #fbbf24; }
-        .stat-box.mnr .value { color: #a78bfa; }
-        .bucket-table { width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 0.78em; }
-        .bucket-table th { text-align: left; color: #00d4ff; padding: 6px 8px; border-bottom: 1px solid #0f3460; font-weight: 500; }
-        .bucket-table td { padding: 5px 8px; border-bottom: 1px solid #0a1628; color: #ccc; }
-        .bucket-table tr:hover td { background: rgba(0,212,255,0.05); }
-        .btn { display: inline-block; padding: 12px 20px; border: none; border-radius: 8px; font-size: 0.85em; cursor: pointer; transition: all 0.3s; text-decoration: none; margin: 5px; }
-        .btn-class { background: #6366f1; color: #fff; width: calc(33% - 15px); }
-        .btn-class:hover { background: #4f46e5; }
-        .btn-clean { background: #00b894; color: #fff; width: calc(33% - 15px); }
+        .btn { display: inline-block; padding: 12px 24px; border: none; border-radius: 8px; font-size: 0.9em; cursor: pointer; transition: all 0.3s; text-decoration: none; margin: 5px; width: calc(50% - 15px); }
+        .btn-clean { background: #00b894; color: #fff; }
         .btn-clean:hover { background: #00a381; }
-        .btn-removed { background: #d63031; color: #fff; width: calc(33% - 15px); }
+        .btn-removed { background: #d63031; color: #fff; }
         .btn-removed:hover { background: #b71c1c; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
         .buttons { text-align: center; }
         .loading { display: none; text-align: center; padding: 20px; }
         .loading .spinner { border: 3px solid #0f3460; border-top: 3px solid #00d4ff; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 0 auto 10px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .error { display: none; background: #d63031; color: #fff; padding: 12px; border-radius: 8px; margin-bottom: 15px; font-size: 0.85em; }
         .version { color: #555; font-size: 0.7em; margin-top: 20px; text-align: center; }
-        .separator { border: none; border-top: 1px solid #0f3460; margin: 20px 0; }
-        .tag { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 0.7em; margin-left: 4px; }
-        .tag-utr { background: rgba(251,191,36,0.2); color: #fbbf24; }
-        .tag-mnr { background: rgba(167,139,250,0.2); color: #a78bfa; }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>EAD Classifier</h1>
-        <p>Limpeza OBLT + Classificacao automatica EAD | Output formato Modelo</p>
+        <h1>Oblt Cleaner</h1>
+        <p>Limpeza de trackings por regras de eventos</p>
     </div>
 
     <div class="rules-info">
-        <h3>Etapa 1 - Limpeza (Oblt Cleaner):</h3>
+        <h3>Regras aplicadas:</h3>
         <ul>
             <li>Regra 1: Remove trackings com EVENT_103 sem EVENT_216</li>
             <li>Regra 2: Remove trackings com EVENT_201 na mesma data do EVENT_103</li>
         </ul>
-        <h3 style="margin-top:10px;">Etapa 2 - Classificacao EAD:</h3>
-        <ul>
-            <li>UTR Error: Pacote chegou (tem 201) mas com atraso</li>
-            <li class="sub">Atraso chegada no SPC | APP finalizado e nao processado | Perda de CPT | Erro Departure | Erro Stow</li>
-            <li>MNR: Pacote nao recebido (sem 201 no node)</li>
-            <li class="sub">MNR-OTR last bip | MNR-PUDO last bip | MNR-UTR last bip | Nao entregue SPC/PN</li>
-            <li>Sub-Bucket: PUDO (Event 105) | Atraso DA (sem Event 105)</li>
-        </ul>
-        <h3 style="margin-top:10px;">Input aceito (OBLT LIMPA):</h3>
-        <ul>
-            <li>tracking_id, status_event, status_date, status_node_id + demais colunas</li>
-        </ul>
     </div>
 
     <div class="container">
-        <div class="error" id="errorMsg"></div>
+        <div class="error" id="errorMsg">Erro: Biblioteca SheetJS nao carregou. Abra esta pagina com internet pelo menos uma vez.</div>
 
         <div class="section">
-            <div class="section-title">1. Carregar arquivo OBLT (.xlsx)</div>
+            <div class="section-title">1. Carregar arquivo</div>
             <div class="drop-zone" id="dropZone">
                 <div class="icon">📂</div>
                 Arraste o arquivo .xlsx aqui ou clique para selecionar
-                <p>Formato OBLT com colunas: tracking_id, status_event, status_date, status_node_id</p>
+                <p>Formato: Oblt com colunas tracking_id, status_event e status_date</p>
             </div>
             <input type="file" id="fileInput" accept=".xlsx">
         </div>
 
         <div class="loading" id="loading">
             <div class="spinner"></div>
-            <p>Processando e classificando...</p>
+            <p>Processando arquivo...</p>
         </div>
 
         <div class="section results" id="results">
-            <div class="section-title">2. Resultado da Limpeza</div>
+            <div class="section-title">2. Resultado da analise</div>
             <div class="stat-grid">
                 <div class="stat-box"><div class="value" id="totalTrackings">0</div><div class="label">Total trackings</div></div>
+                <div class="stat-box removed"><div class="value" id="removedTrackings">0</div><div class="label">Removidas (total)</div></div>
                 <div class="stat-box rule1"><div class="value" id="rule1Trackings">0</div><div class="label">Regra 1 (103 s/ 216)</div></div>
-                <div class="stat-box rule2"><div class="value" id="rule2Trackings">0</div><div class="label">Regra 2 (201=103)</div></div>
+                <div class="stat-box rule2"><div class="value" id="rule2Trackings">0</div><div class="label">Regra 2 (201=103 data)</div></div>
             </div>
-
-            <hr class="separator">
-
-            <div class="section-title">3. Classificacao EAD <span class="tag tag-utr">UTR</span> <span class="tag tag-mnr">MNR</span></div>
-            <div class="stat-grid">
-                <div class="stat-box"><div class="value" id="classifiedTotal">0</div><div class="label">Classificados</div></div>
-                <div class="stat-box utr"><div class="value" id="utrTotal">0</div><div class="label">UTR Error</div></div>
-                <div class="stat-box mnr"><div class="value" id="mnrTotal">0</div><div class="label">MNR</div></div>
-            </div>
-
-            <table class="bucket-table" id="bucketTable">
-                <thead><tr><th>Bucket</th><th>Qtd</th><th>%</th></tr></thead>
-                <tbody id="bucketBody"></tbody>
-            </table>
-
-            <hr class="separator">
-
-            <div class="section-title">4. Downloads</div>
             <div class="buttons">
-                <button class="btn btn-class" onclick="downloadClassified()">📊 Classificado (.xlsx)</button>
-                <button class="btn btn-clean" onclick="downloadClean()">✅ Base Limpa (.xlsx)</button>
-                <button class="btn btn-removed" onclick="downloadRemoved()">❌ Removidas (.xlsx)</button>
+                <button class="btn btn-clean" id="btnClean" onclick="downloadClean()">✅ Baixar Base Limpa (.xlsx)</button>
+                <button class="btn btn-removed" id="btnRemoved" onclick="downloadRemoved()">❌ Baixar Removidas (.xlsx)</button>
             </div>
         </div>
     </div>
 
-    <div class="version">EAD Classifier v2.0 | Oblt Cleaner integrado | Output formato Modelo</div>
+    <div class="version">v1.4 | Requer internet no 1o acesso</div>
 
-    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <script>
-        // === CONFIG ===
-        const PN_NODES = ['EVE8','EIJ8','EME8','EJO8','EUM8','EMR8','EOZ8'];
-        const SPC_NODES = ['ECB8','ESE8','ERS8','ESB8','ELO8','EGO8'];
-        const MODELO_HEADERS = ['tracking id','route','node','estimated_arrival_datetime_brt','expected_pickup_datetime_brt','arrived_or_event_201_brt','departure_or_event_202_brt','Classificação','CPT Status','Bucket','Sub-Bucket','Obs'];
-        const COL_WIDTHS = [{wch:16},{wch:44},{wch:13},{wch:31},{wch:31},{wch:31},{wch:31},{wch:13},{wch:13},{wch:49},{wch:26},{wch:43}];
+        let cleanData = [];
+        let removedData = [];
+        let headers = [];
 
-        // Excel Styles (Modelo format)
-        const S_HDR = { fill:{fgColor:{rgb:"2F5597"}}, font:{bold:true,color:{rgb:"FFFFFF"},sz:12}, alignment:{horizontal:"center",vertical:"center"}, border:{top:{style:"thin",color:{rgb:"1F3864"}},bottom:{style:"thin",color:{rgb:"1F3864"}},left:{style:"thin",color:{rgb:"1F3864"}},right:{style:"thin",color:{rgb:"1F3864"}}} };
-        const S_EVEN = { fill:{fgColor:{rgb:"C0E6F5"}}, font:{color:{rgb:"000000"},sz:11}, border:{bottom:{style:"thin",color:{rgb:"D9E2F3"}}} };
-        const S_ODD = { fill:{fgColor:{rgb:"FFFFFF"}}, font:{color:{rgb:"000000"},sz:11}, border:{bottom:{style:"thin",color:{rgb:"D9E2F3"}}} };
-
-        let cleanRows = [], removedRows = [], classifiedData = [], origHeaders = [];
-
+        // Check if XLSX loaded
         window.addEventListener('load', () => {
-            if (typeof XLSX === 'undefined') showError('Biblioteca nao carregou. Abra com internet pelo menos uma vez.');
+            if (typeof XLSX === 'undefined') {
+                document.getElementById('errorMsg').style.display = 'block';
+            }
         });
 
-        function showError(msg) { const el=document.getElementById('errorMsg'); el.textContent=msg; el.style.display='block'; }
-
+        // Drop zone events
         const dropZone = document.getElementById('dropZone');
         const fileInput = document.getElementById('fileInput');
+
         dropZone.addEventListener('click', () => fileInput.click());
-        dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
         dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
-        dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('dragover'); if(e.dataTransfer.files.length) processFile(e.dataTransfer.files); });
-        fileInput.addEventListener('change', e => { if(e.target.files.length) processFile(e.target.files); });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length) processFile(e.dataTransfer.files[0]);
+        });
+        fileInput.addEventListener('change', (e) => { if (e.target.files.length) processFile(e.target.files[0]); });
 
-        // === HELPERS ===
-        function normDate(val) {
-            if (!val || val==='-') return '';
-            if (typeof val==='number') { const d=XLSX.SSF.parse_date_code(val); if(d) return d.y+'-'+String(d.m).padStart(2,'0')+'-'+String(d.d).padStart(2,'0'); }
-            const s = String(val).trim();
-            const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
-            if (iso) return iso;
-            const br = s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
-            if (br) return br+'-'+br+'-'+br;
-            return s.substring(0,10);
-        }
-
-        function getNodeFromRoute(route) {
-            if (!route) return '';
-            const parts = route.split('->').map(s=>s.trim()).filter(Boolean);
-            for (const p of parts) { if (SPC_NODES.includes(p)||PN_NODES.includes(p)) return p; }
-            return parts.length>1 ? parts : (parts||'');
-        }
-
-        // === CLASSIFICATION ===
-        function classify(ev103, ev105, ev216, ev201, ev202, route, node) {
-            const has105 = !!ev105;
-            const has201 = !!ev201;
-            const has202 = !!ev202;
-            const has216 = !!ev216;
-
-            const subBucket = has105 ? 'PUDO' : 'Atraso DA';
-            const targetNode = node || getNodeFromRoute(route);
-            const isSPC = SPC_NODES.includes(targetNode);
-            const isPN = PN_NODES.includes(targetNode);
-
-            // UTR Error (has 201 at node)
-            if (has201) {
-                const d103 = normDate(ev103), d201 = normDate(ev201), d216 = normDate(ev216), d202 = has202?normDate(ev202):'';
-                const same103_201 = d103 && d201 && d103===d201;
-                const same103_216 = d103 && d216 && d103===d216;
-
-                if (same103_201) {
-                    if (has202 && d202!==d103) return {cls:'UTR Error',cpt:'Stow Miss',bucket:'Perda de CPT',sub:''};
-                    if (!has202) return {cls:'UTR Error',cpt:'Stow Miss',bucket:'Erro Departure',sub:''};
+        function normalizeDate(val) {
+            if (!val) return '';
+            // If it's a number (Excel serial date), convert it
+            if (typeof val === 'number') {
+                const date = XLSX.SSF.parse_date_code(val);
+                if (date) {
+                    const y = date.y;
+                    const m = String(date.m).padStart(2, '0');
+                    const d = String(date.d).padStart(2, '0');
+                    return `${y}-${m}-${d}`;
                 }
-                if (same103_216 && !same103_201) return {cls:'UTR Error',cpt:'Stow Miss',bucket:'APP finalizado e nao processado',sub:'SPC deixou pacote no piso'};
-                return {cls:'UTR Error',cpt:'Stow Miss',bucket:'Atraso na chegada no SPC',sub:subBucket};
             }
-
-            if (has202 && !has201) return {cls:'UTR Error',cpt:'Stow Miss',bucket:'Erro Stow',sub:''};
-
-            // MNR
-            const routeParts = (route||'').split('->').map(s=>s.trim()).filter(Boolean);
-            const hasPN_inRoute = routeParts.some(p=>PN_NODES.includes(p));
-
-            if (has105 && has216) return {cls:'MNR',cpt:'Stow Miss',bucket:'MNR - PUDO last bip',sub:'PUDO'};
-
-            if (ev103 && has216) {
-                if (isPN) return {cls:'MNR',cpt:'Stow Miss',bucket:'Pacote coletado e nao entregue no PN',sub:subBucket};
-                if (isSPC) {
-                    if (hasPN_inRoute) return {cls:'MNR',cpt:'Stow Miss',bucket:'Pacote processado no PN e nao chegou no SPC',sub:''};
-                    return {cls:'MNR',cpt:'Stow Miss',bucket:'Pacote coletado e nao entregue no SPC',sub:subBucket};
-                }
-                return {cls:'MNR',cpt:'Stow Miss',bucket:'MNR - OTR last bip',sub:subBucket};
-            }
-
-            if (isSPC) return {cls:'MNR',cpt:'Stow Miss',bucket:'Pacote coletado e nao entregue no SPC',sub:subBucket};
-            if (isPN) return {cls:'MNR',cpt:'Stow Miss',bucket:'Pacote coletado e nao entregue no PN',sub:subBucket};
-            return {cls:'MNR',cpt:'Stow Miss',bucket:'MNR - OTR last bip',sub:subBucket};
+            // If it's a string, extract just the date part (YYYY-MM-DD or DD/MM/YYYY etc)
+            const str = String(val).trim();
+            // Try YYYY-MM-DD format
+            const isoMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (isoMatch) return isoMatch[0];
+            // Try DD/MM/YYYY format
+            const brMatch = str.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+            if (brMatch) return `${brMatch[3]}-${brMatch[2]}-${brMatch[1]}`;
+            // Try MM/DD/YYYY format
+            const usMatch = str.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+            if (usMatch) return `${usMatch[3]}-${usMatch[1]}-${usMatch[2]}`;
+            // Return first 10 chars as fallback
+            return str.substring(0, 10);
         }
 
-        // === MAIN PROCESS ===
         function processFile(file) {
-            if (!file.name.endsWith('.xlsx')) { alert('Selecione .xlsx'); return; }
+            if (!file.name.endsWith('.xlsx')) {
+                alert('Por favor, selecione um arquivo .xlsx');
+                return;
+            }
+
             document.getElementById('loading').style.display = 'block';
             document.getElementById('results').style.display = 'none';
-            document.getElementById('errorMsg').style.display = 'none';
 
             const reader = new FileReader();
             reader.onload = function(e) {
                 try {
-                    const wb = XLSX.read(e.target.result, {type:'array',cellDates:false});
-                    const sheet = wb.Sheets[wb.SheetNames];
-                    const data = XLSX.utils.sheet_to_json(sheet, {header:1,raw:true});
-                    if (data.length<2) throw new Error('Arquivo vazio');
+                    const workbook = XLSX.read(e.target.result, { type: 'array', cellDates: false });
+                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const data = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true });
 
-                    origHeaders = data;
+                    if (data.length < 2) throw new Error('Arquivo vazio');
+
+                    headers = data[0];
                     const rows = data.slice(1);
 
-                    // Find column indices
-                    const h = origHeaders.map(x=>String(x||'').toLowerCase().trim());
-                    const tIdx = h.findIndex(x=>x.includes('tracking_id'));
-                    const eIdx = h.findIndex(x=>x.includes('status_event'));
-                    const dIdx = h.findIndex(x=>x.includes('status_date'));
-                    const nIdx = h.findIndex(x=>x.includes('status_node_id'));
+                    // Find column indexes
+                    const trackingIdx = headers.findIndex(h => String(h).toLowerCase().includes('tracking_id'));
+                    const eventIdx = headers.findIndex(h => String(h).toLowerCase().includes('status_event'));
+                    const dateIdx = headers.findIndex(h => String(h).toLowerCase().includes('status_date'));
 
-                    if (tIdx===-1||eIdx===-1||dIdx===-1) throw new Error('Colunas tracking_id, status_event ou status_date nao encontradas');
+                    if (trackingIdx === -1 || eventIdx === -1) throw new Error('Colunas tracking_id e/ou status_event nao encontradas');
+                    if (dateIdx === -1) throw new Error('Coluna status_date nao encontrada (necessaria para Regra 2)');
 
-                    // Group by tracking_id
+                    // Group rows by tracking_id
                     const groups = {};
                     rows.forEach(row => {
-                        if (!row||row.length===0) return;
-                        const tid = String(row[tIdx]||'').trim();
+                        if (!row || row.length === 0) return;
+                        const tid = String(row[trackingIdx] || '').trim();
                         if (!tid) return;
-                        if (!groups[tid]) groups[tid]=[];
+                        if (!groups[tid]) groups[tid] = [];
                         groups[tid].push(row);
                     });
 
-                    let rule1=0, rule2=0;
-                    cleanRows=[]; removedRows=[]; classifiedData=[];
+                    cleanData = [];
+                    removedData = [];
+                    let rule1Count = 0;
+                    let rule2Count = 0;
+
                     const totalTrackings = Object.keys(groups).length;
 
                     Object.entries(groups).forEach(([tid, tRows]) => {
-                        const evts = tRows.map(r=>String(r[eIdx]||'').trim().toUpperCase());
-                        const has103 = evts.some(e=>e==='EVENT_103');
-                        const has216 = evts.some(e=>e==='EVENT_216');
+                        const events = tRows.map(r => String(r[eventIdx] || '').trim().toUpperCase());
 
-                        // Rule 1: 103 without 216
-                        if (has103 && !has216) { removedRows.push(...tRows); rule1++; return; }
+                        let removed = false;
+                        let appliedRule = 0;
 
-                        // Rule 2: 201 same date as 103
-                        if (has103) {
-                            const dates103 = [];
-                            tRows.forEach(r => { if(String(r[eIdx]||'').trim().toUpperCase()==='EVENT_103') dates103.push(normDate(r[dIdx])); });
-                            const same = tRows.some(r => String(r[eIdx]||'').trim().toUpperCase()==='EVENT_201' && dates103.includes(normDate(r[dIdx])));
-                            if (same) { removedRows.push(...tRows); rule2++; return; }
+                        // Rule 1: Has EVENT_103 but no EVENT_216
+                        const has103 = events.some(ev => ev === 'EVENT_103');
+                        const has216 = events.some(ev => ev === 'EVENT_216');
+
+                        if (has103 && !has216) {
+                            removed = true;
+                            appliedRule = 1;
                         }
 
-                        cleanRows.push(...tRows);
+                        // Rule 2: EVENT_201 on same date as EVENT_103
+                        if (!removed && has103) {
+                            // Get dates for EVENT_103
+                            const dates103 = [];
+                            tRows.forEach(r => {
+                                if (String(r[eventIdx] || '').trim().toUpperCase() === 'EVENT_103') {
+                                    dates103.push(normalizeDate(r[dateIdx]));
+                                }
+                            });
 
-                        // Build route from node sequence
-                        const nodeSeq = [];
-                        tRows.forEach(r => {
-                            const nd = nIdx>=0 ? String(r[nIdx]||'').trim() : '';
-                            if (nd && !nodeSeq.includes(nd)) nodeSeq.push(nd);
-                        });
-                        const route = nodeSeq.join('->');
+                            // Check if any EVENT_201 has same date as any EVENT_103
+                            const has201SameDate = tRows.some(r => {
+                                if (String(r[eventIdx] || '').trim().toUpperCase() === 'EVENT_201') {
+                                    const date201 = normalizeDate(r[dateIdx]);
+                                    return dates103.includes(date201);
+                                }
+                                return false;
+                            });
 
-                        // Get node where EVENT_103 happened
-                        let node103 = '';
-                        tRows.forEach(r => {
-                            if (String(r[eIdx]||'').trim().toUpperCase()==='EVENT_103') {
-                                node103 = nIdx>=0 ? String(r[nIdx]||'').trim() : '';
+                            if (has201SameDate) {
+                                removed = true;
+                                appliedRule = 2;
                             }
-                        });
+                        }
 
-                        // Get event datetimes at the first node (node103)
-                        let dt103='', dt105='', dt216='', dt201='', dt202='';
-                        tRows.forEach(r => {
-                            const ev = String(r[eIdx]||'').trim().toUpperCase();
-                            const nd = nIdx>=0 ? String(r[nIdx]||'').trim() : '';
-                            const dt = String(r[dIdx]||'').trim();
-
-                            if (ev==='EVENT_103' && !dt103) dt103 = dt;
-                            if (ev==='EVENT_105' && !dt105) dt105 = dt;
-                            if (ev==='EVENT_216' && nd===node103 && !dt216) dt216 = dt;
-                            if (ev==='EVENT_201' && nd===node103 && !dt201) dt201 = dt;
-                            if (ev==='EVENT_202' && nd===node103 && !dt202) dt202 = dt;
-                        });
-
-                        // Classify
-                        const r = classify(dt103, dt105, dt216, dt201, dt202, route, node103);
-
-                        classifiedData.push([
-                            tid, route, node103,
-                            '', '',
-                            dt201, dt202,
-                            r.cls, r.cpt, r.bucket, r.sub, ''
-                        ]);
+                        if (removed) {
+                            removedData.push(...tRows);
+                            if (appliedRule === 1) rule1Count++;
+                            if (appliedRule === 2) rule2Count++;
+                        } else {
+                            cleanData.push(...tRows);
+                        }
                     });
 
                     // Update UI
                     document.getElementById('totalTrackings').textContent = totalTrackings.toLocaleString('pt-BR');
-                    document.getElementById('rule1Trackings').textContent = rule1.toLocaleString('pt-BR');
-                    document.getElementById('rule2Trackings').textContent = rule2.toLocaleString('pt-BR');
-                    document.getElementById('classifiedTotal').textContent = classifiedData.length.toLocaleString('pt-BR');
-
-                    const utr = classifiedData.filter(r=>r==='UTR Error').length;
-                    const mnr = classifiedData.filter(r=>r==='MNR').length;
-                    document.getElementById('utrTotal').textContent = utr.toLocaleString('pt-BR');
-                    document.getElementById('mnrTotal').textContent = mnr.toLocaleString('pt-BR');
-
-                    // Bucket table
-                    const bc = {};
-                    classifiedData.forEach(r => { const b=r||'N/A'; bc[b]=(bc[b]||0)+1; });
-                    const tot = classifiedData.length||1;
-                    let html = '';
-                    Object.entries(bc).sort((a,b)=>b-a).forEach(([b,c]) => {
-                        html += '<tr><td>'+b+'</td><td>'+c+'</td><td>'+((c/tot)*100).toFixed(1)+'%</td></tr>';
-                    });
-                    document.getElementById('bucketBody').innerHTML = html;
+                    document.getElementById('removedTrackings').textContent = (rule1Count + rule2Count).toLocaleString('pt-BR');
+                    document.getElementById('rule1Trackings').textContent = rule1Count.toLocaleString('pt-BR');
+                    document.getElementById('rule2Trackings').textContent = rule2Count.toLocaleString('pt-BR');
 
                     document.getElementById('loading').style.display = 'none';
                     document.getElementById('results').style.display = 'block';
 
-                } catch(err) {
+                } catch (err) {
                     document.getElementById('loading').style.display = 'none';
-                    showError('Erro: '+err.message);
+                    alert('Erro: ' + err.message);
                 }
             };
             reader.readAsArrayBuffer(file);
         }
 
-        // === STYLED EXCEL (formato Modelo) ===
-        function buildStyledSheet(dataRows) {
-            const ws = XLSX.utils.aoa_to_sheet([MODELO_HEADERS, ...dataRows]);
-
-            // Header style
-            for (let c=0; c<12; c++) {
-                const addr = XLSX.utils.encode_cell({r:0,c});
-                if (ws[addr]) ws[addr].s = S_HDR;
-            }
-
-            // Data rows zebra
-            for (let r=0; r<dataRows.length; r++) {
-                const style = (r%2===0) ? S_EVEN : S_ODD;
-                for (let c=0; c<12; c++) {
-                    const addr = XLSX.utils.encode_cell({r:r+1,c});
-                    if (ws[addr]) ws[addr].s = style;
-                    else ws[addr] = {v:'',t:'s',s:style};
-                }
-            }
-
-            ws['!cols'] = COL_WIDTHS;
-            return ws;
-        }
-
-        function downloadClassified() {
-            if (!classifiedData.length) return;
-            const ws = buildStyledSheet(classifiedData);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, 'Classificado');
-            XLSX.utils.book_append_sheet(wb, createSummary(), 'Resumo');
-            dlBlob(new Blob([XLSX.write(wb,{bookType:'xlsx',type:'array'})],{type:'application/octet-stream'}), 'ead_classificado.xlsx');
-        }
-
         function downloadClean() {
-            if (!cleanRows.length) return;
-            const ws = XLSX.utils.aoa_to_sheet([origHeaders, ...cleanRows]);
+            if (!cleanData.length) return;
+            const ws = XLSX.utils.aoa_to_sheet([headers, ...cleanData]);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, 'Base Limpa');
-            dlBlob(new Blob([XLSX.write(wb,{bookType:'xlsx',type:'array'})],{type:'application/octet-stream'}), 'base_limpa.xlsx');
+            XLSX.utils.book_append_sheet(wb, createSummarySheet(), 'Resumo');
+            XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+            const blob = new Blob([XLSX.write(wb, { bookType: 'xlsx', type: 'array' })], { type: 'application/octet-stream' });
+            downloadBlob(blob, 'base_limpa.xlsx');
         }
 
         function downloadRemoved() {
-            if (!removedRows.length) return;
-            const ws = XLSX.utils.aoa_to_sheet([origHeaders, ...removedRows]);
+            if (!removedData.length) return;
+            const ws = XLSX.utils.aoa_to_sheet([headers, ...removedData]);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, 'Removidas');
-            dlBlob(new Blob([XLSX.write(wb,{bookType:'xlsx',type:'array'})],{type:'application/octet-stream'}), 'removidas.xlsx');
+            XLSX.utils.book_append_sheet(wb, createSummarySheet(), 'Resumo');
+            XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+            const blob = new Blob([XLSX.write(wb, { bookType: 'xlsx', type: 'array' })], { type: 'application/octet-stream' });
+            downloadBlob(blob, 'removidas.xlsx');
         }
 
-        function createSummary() {
-            const s = [['EAD Classifier v2.0 - Resumo'],[''],['Etapa','Metrica','Valor'],
-                ['Limpeza','Total trackings',document.getElementById('totalTrackings').textContent],
-                ['Limpeza','Regra 1 (103 s/ 216)',document.getElementById('rule1Trackings').textContent],
-                ['Limpeza','Regra 2 (201=103)',document.getElementById('rule2Trackings').textContent],
-                [''],['Classificacao','Classificados',document.getElementById('classifiedTotal').textContent],
-                ['Classificacao','UTR Error',document.getElementById('utrTotal').textContent],
-                ['Classificacao','MNR',document.getElementById('mnrTotal').textContent],
-                [''],['Bucket','Qtd','%']];
-            const tot=classifiedData.length||1; const bc={};
-            classifiedData.forEach(r=>{const b=r||'-';bc[b]=(bc[b]||0)+1;});
-            Object.entries(bc).sort((a,b)=>b-a).forEach(([b,c])=>{s.push([b,c,((c/tot)*100).toFixed(1)+'%']);});
-            return XLSX.utils.aoa_to_sheet(s);
+        function createSummarySheet() {
+            const summaryData = [
+                ['Oblt Cleaner - Resumo'],
+                [''],
+                ['Regra', 'Descricao'],
+                ['Regra 1', 'Trackings com EVENT_103 sem EVENT_216'],
+                ['Regra 2', 'Trackings com EVENT_201 na mesma data do EVENT_103'],
+                [''],
+                ['Metrica', 'Valor'],
+                ['Total trackings', document.getElementById('totalTrackings').textContent],
+                ['Removidas (total)', document.getElementById('removedTrackings').textContent],
+                ['Regra 1', document.getElementById('rule1Trackings').textContent],
+                ['Regra 2', document.getElementById('rule2Trackings').textContent],
+            ];
+            return XLSX.utils.aoa_to_sheet(summaryData);
         }
 
-        function dlBlob(blob,fn) {
-            const url=URL.createObjectURL(blob); const a=document.createElement('a');
-            a.href=url; a.download=fn; document.body.appendChild(a); a.click();
-            document.body.removeChild(a); URL.revokeObjectURL(url);
+        function downloadBlob(blob, filename) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
         }
     </script>
 </body>
 </html>
+
