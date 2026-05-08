@@ -64,12 +64,12 @@
         <ul>
             <li>Atraso na chegada no SPC: 201 em dia diferente do pickup (chegou atrasado)</li>
             <li>APP finalizado e nao processado: pickup = dia do 201, tem 202 no mesmo dia</li>
-            <li>Perda de CPT: pickup = dia do 201, 202 em dia diferente</li>
+            <li>Perda de CPT: pickup = dia do 201, 202 em dia diferente (CPT Miss)</li>
             <li>Erro de Departure: pickup = dia do 201, sem 202</li>
         </ul>
         <h3 style="margin-top:10px;">Regras de Bucket (MNR):</h3>
         <ul>
-            <li>MNR - UTR last bip: Route passa por node PN (EVE8, EIJ8, EME8, EJO8, EUM8, EMR8, EOZ8)</li>
+            <li>MNR - UTR last bip: Route passa por node PN</li>
             <li>MNR - OTR last bip: Demais casos</li>
         </ul>
         <h3 style="margin-top:10px;">Regras de Sub-Bucket:</h3>
@@ -128,7 +128,6 @@
         const PN_NODES = ['EVE8','EIJ8','EME8','EJO8','EUM8','EMR8','EOZ8'];
         const SPC_NODES = ['ECB8','ESE8','ERS8','ESB8','ELO8','EGO8'];
 
-        // Sub-Bucket rules
         const SUB_BUCKET_MAP = {
             'MNR - OTR last bip': 'Atraso DA',
             'APP finalizado e nao processado': 'Atraso DA',
@@ -141,96 +140,97 @@
         let resultData = [];
         let resultHeaders = [];
 
-        window.addEventListener('load', () => {
+        window.addEventListener('load', function() {
             if (typeof XLSX === 'undefined') {
-                const el = document.getElementById('errorMsg');
+                var el = document.getElementById('errorMsg');
                 el.textContent = 'Erro: Biblioteca nao carregou. Abra com internet pelo menos uma vez.';
                 el.style.display = 'block';
             }
         });
 
-        const dropZone = document.getElementById('dropZone');
-        const fileInput = document.getElementById('fileInput');
+        var dropZone = document.getElementById('dropZone');
+        var fileInput = document.getElementById('fileInput');
 
-        dropZone.addEventListener('click', () => fileInput.click());
-        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
-        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
-        dropZone.addEventListener('drop', (e) => {
+        dropZone.addEventListener('click', function() { fileInput.click(); });
+        dropZone.addEventListener('dragover', function(e) { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragleave', function() { dropZone.classList.remove('dragover'); });
+        dropZone.addEventListener('drop', function(e) {
             e.preventDefault();
             dropZone.classList.remove('dragover');
             if (e.dataTransfer.files.length) processFile(e.dataTransfer.files);
         });
-        fileInput.addEventListener('change', (e) => { if (e.target.files.length) processFile(e.target.files); });
+        fileInput.addEventListener('change', function(e) {
+            if (e.target.files.length) processFile(e.target.files);
+        });
 
         function extractDate(val) {
-            if (!val || val === 'NaN' || val === 'None' || val === 'nan') return '';
-            const str = String(val).trim();
-            if (!str) return '';
-
-            // ISO format: 2026-05-05 or 2026-05-05 19:59:00
-            const iso = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
-            if (iso) return iso;
-
-            // BR format: 27/04/2026
-            const br = str.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
-            if (br) return `${br}-${br}-${br}`;
+            if (!val) return '';
+            var str = String(val).trim();
+            if (!str || str === 'NaN' || str === 'None' || str === 'nan' || str === 'NaT') return '';
 
             // Excel serial number
             if (typeof val === 'number') {
-                const d = XLSX.SSF.parse_date_code(val);
-                if (d) return `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`;
+                var d = XLSX.SSF.parse_date_code(val);
+                if (d) return d.y + '-' + String(d.m).padStart(2,'0') + '-' + String(d.d).padStart(2,'0');
             }
+
+            // ISO format: 2026-05-05 or 2026-05-05 19:59:00
+            var iso = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (iso) return iso;
+
+            // BR format: 27/04/2026 22:00
+            var br = str.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+            if (br) return br + '-' + br + '-' + br;
 
             return '';
         }
 
         function hasValue(val) {
-            if (!val) return false;
-            const str = String(val).trim().toLowerCase();
+            if (val === null || val === undefined) return false;
+            var str = String(val).trim().toLowerCase();
             return str !== '' && str !== 'nan' && str !== 'none' && str !== 'nat' && str !== '-';
         }
 
         function routeHasPN(route) {
             if (!route) return false;
-            const parts = String(route).split('->').map(s => s.trim());
-            return parts.some(p => PN_NODES.includes(p));
+            var parts = String(route).split('->').map(function(s) { return s.trim(); });
+            return parts.some(function(p) { return PN_NODES.indexOf(p) !== -1; });
         }
 
         function classifyBucket(classificacao, cptStatus, pickup, ev201, ev202, route, node) {
-            const cls = String(classificacao || '').trim();
-            const cpt = String(cptStatus || '').trim();
+            var cls = String(classificacao || '').trim();
+            var cpt = String(cptStatus || '').trim();
 
-            const has201 = hasValue(ev201);
-            const has202 = hasValue(ev202);
+            var has201 = hasValue(ev201);
+            var has202 = hasValue(ev202);
 
             // === UTR Error ===
             if (cls === 'UTR Error') {
-                const pickupDate = extractDate(pickup);
-                const date201 = extractDate(ev201);
-                const date202 = extractDate(ev202);
+                var pickupDate = extractDate(pickup);
+                var date201 = extractDate(ev201);
+                var date202 = extractDate(ev202);
 
-                // CPT Miss = Perda de CPT (201 same day as pickup, 202 different day)
+                // CPT Miss = Perda de CPT
                 if (cpt === 'CPT Miss') {
                     return 'Perda de CPT';
                 }
 
                 // Stow Miss cases
                 if (has201) {
-                    const sameDay_pickup_201 = pickupDate && date201 && pickupDate === date201;
+                    var sameDay_pickup_201 = pickupDate && date201 && pickupDate === date201;
 
                     if (sameDay_pickup_201) {
                         if (!has202) {
                             return 'Erro de Departure';
                         }
-                        // Has 202
-                        const sameDay_pickup_202 = pickupDate && date202 && pickupDate === date202;
+                        var sameDay_pickup_202 = pickupDate && date202 && pickupDate === date202;
                         if (sameDay_pickup_202) {
                             return 'APP finalizado e nao processado';
                         } else {
                             return 'Perda de CPT';
                         }
                     } else {
-                        // 201 on different day than pickup → arrived late
+                        // 201 on different day than pickup
                         if (!has202) {
                             return 'Erro de Departure';
                         }
@@ -262,87 +262,89 @@
         }
 
         function processFile(file) {
-            if (!file.name.endsWith('.xlsx')) { alert('Selecione um arquivo .xlsx'); return; }
+            if (!file.name.endsWith('.xlsx')) {
+                alert('Selecione um arquivo .xlsx');
+                return;
+            }
 
             document.getElementById('loading').style.display = 'block';
             document.getElementById('results').style.display = 'none';
             document.getElementById('errorMsg').style.display = 'none';
 
-            const reader = new FileReader();
+            var reader = new FileReader();
             reader.onload = function(e) {
                 try {
-                    const wb = XLSX.read(e.target.result, { type: 'array', cellDates: false });
-                    const sheet = wb.Sheets[wb.SheetNames];
-                    const data = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true });
+                    var wb = XLSX.read(e.target.result, { type: 'array', cellDates: false });
+                    var sheet = wb.Sheets[wb.SheetNames];
+                    var data = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true });
 
                     if (data.length < 2) throw new Error('Arquivo vazio');
 
                     resultHeaders = data;
-                    const rows = data.slice(1);
+                    var rows = data.slice(1);
 
-                    // Find column indices by header name
-                    const h = resultHeaders.map(x => String(x || '').trim().toLowerCase());
-                    const routeIdx = h.findIndex(x => x === 'route');
-                    const nodeIdx = h.findIndex(x => x === 'node');
-                    const pickupIdx = h.findIndex(x => x.includes('expected_pickup'));
-                    const ev201Idx = h.findIndex(x => x.includes('arrived') || x.includes('event_201'));
-                    const ev202Idx = h.findIndex(x => x.includes('departure') || x.includes('event_202'));
-                    const clsIdx = h.findIndex(x => x.includes('classifica'));
-                    const cptIdx = h.findIndex(x => x.includes('cpt'));
-                    const bucketIdx = h.findIndex(x => x === 'bucket');
-                    const subIdx = h.findIndex(x => x.includes('sub-bucket') || x.includes('sub_bucket'));
+                    // Find column indices
+                    var h = resultHeaders.map(function(x) { return String(x || '').trim().toLowerCase(); });
+                    var routeIdx = h.indexOf('route');
+                    var nodeIdx = h.indexOf('node');
+                    var pickupIdx = h.findIndex(function(x) { return x.indexOf('expected_pickup') !== -1; });
+                    var ev201Idx = h.findIndex(function(x) { return x.indexOf('arrived') !== -1 || x.indexOf('event_201') !== -1; });
+                    var ev202Idx = h.findIndex(function(x) { return x.indexOf('departure') !== -1 || x.indexOf('event_202') !== -1; });
+                    var clsIdx = h.findIndex(function(x) { return x.indexOf('classifica') !== -1; });
+                    var cptIdx = h.findIndex(function(x) { return x.indexOf('cpt') !== -1; });
+                    var bucketIdx = h.indexOf('bucket');
+                    var subIdx = h.findIndex(function(x) { return x.indexOf('sub-bucket') !== -1 || x.indexOf('sub_bucket') !== -1; });
 
                     if (clsIdx === -1) throw new Error('Coluna "Classificacao" nao encontrada');
                     if (bucketIdx === -1) throw new Error('Coluna "Bucket" nao encontrada');
 
                     resultData = [];
-                    let utrCount = 0, mnrCount = 0;
-                    const bucketCounts = {};
+                    var utrCount = 0, mnrCount = 0;
+                    var bucketCounts = {};
 
-                    rows.forEach(row => {
+                    rows.forEach(function(row) {
                         if (!row || row.length === 0) return;
 
-                        const classificacao = row[clsIdx];
-                        const cptStatus = cptIdx >= 0 ? row[cptIdx] : '';
-                        const pickup = pickupIdx >= 0 ? row[pickupIdx] : '';
-                        const ev201 = ev201Idx >= 0 ? row[ev201Idx] : '';
-                        const ev202 = ev202Idx >= 0 ? row[ev202Idx] : '';
-                        const route = routeIdx >= 0 ? row[routeIdx] : '';
-                        const node = nodeIdx >= 0 ? row[nodeIdx] : '';
+                        var classificacao = row[clsIdx];
+                        var cptStatus = cptIdx >= 0 ? row[cptIdx] : '';
+                        var pickup = pickupIdx >= 0 ? row[pickupIdx] : '';
+                        var ev201 = ev201Idx >= 0 ? row[ev201Idx] : '';
+                        var ev202 = ev202Idx >= 0 ? row[ev202Idx] : '';
+                        var route = routeIdx >= 0 ? row[routeIdx] : '';
+                        var node = nodeIdx >= 0 ? row[nodeIdx] : '';
 
-                        const cls = String(classificacao || '').trim();
+                        var cls = String(classificacao || '').trim();
                         if (cls === 'UTR Error') utrCount++;
                         if (cls === 'MNR') mnrCount++;
 
                         // Classify Bucket
-                        const bucket = classifyBucket(classificacao, cptStatus, pickup, ev201, ev202, route, node);
-                        const subBucket = getSubBucket(bucket);
+                        var bucket = classifyBucket(classificacao, cptStatus, pickup, ev201, ev202, route, node);
+                        var subBucket = getSubBucket(bucket);
 
                         // Update row
-                        const newRow = [...row];
-                        // Ensure array is large enough
+                        var newRow = row.slice();
                         while (newRow.length < resultHeaders.length) newRow.push('');
                         if (bucketIdx >= 0) newRow[bucketIdx] = bucket;
                         if (subIdx >= 0) newRow[subIdx] = subBucket;
 
                         resultData.push(newRow);
 
-                        // Count buckets
-                        const b = bucket || 'Sem classificacao';
+                        var b = bucket || 'Sem classificacao';
                         bucketCounts[b] = (bucketCounts[b] || 0) + 1;
                     });
 
                     // Update UI
-                    const total = resultData.length;
+                    var total = resultData.length;
                     document.getElementById('totalRows').textContent = total.toLocaleString('pt-BR');
                     document.getElementById('utrTotal').textContent = utrCount.toLocaleString('pt-BR');
                     document.getElementById('mnrTotal').textContent = mnrCount.toLocaleString('pt-BR');
 
-                    let bHTML = '';
+                    var bHTML = '';
                     Object.entries(bucketCounts)
-                        .sort((a, b) => b - a)
-                        .forEach(([bucket, count]) => {
-                            const pct = ((count / (total || 1)) * 100).toFixed(1);
+                        .sort(function(a, b) { return b - a; })
+                        .forEach(function(entry) {
+                            var bucket = entry, count = entry;
+                            var pct = ((count / (total || 1)) * 100).toFixed(1);
                             bHTML += '<tr><td>' + bucket + '</td><td>' + count + '</td><td>' + pct + '%</td></tr>';
                         });
                     document.getElementById('bucketBody').innerHTML = bHTML;
@@ -352,7 +354,7 @@
 
                 } catch (err) {
                     document.getElementById('loading').style.display = 'none';
-                    const el = document.getElementById('errorMsg');
+                    var el = document.getElementById('errorMsg');
                     el.textContent = 'Erro: ' + err.message;
                     el.style.display = 'block';
                 }
@@ -363,23 +365,25 @@
         function downloadResult() {
             if (!resultData.length) return;
 
-            const allData = [resultHeaders, ...resultData];
-            const ws = XLSX.utils.aoa_to_sheet(allData);
+            var allData = [resultHeaders].concat(resultData);
+            var ws = XLSX.utils.aoa_to_sheet(allData);
 
-            // Column widths (Modelo format)
             ws['!cols'] = [
                 {wch:16},{wch:44},{wch:13},{wch:31},{wch:31},
                 {wch:31},{wch:31},{wch:13},{wch:13},{wch:49},{wch:26},{wch:43}
             ];
 
-            const wb = XLSX.utils.book_new();
+            var wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, 'Classificado');
-            const blob = new Blob([XLSX.write(wb, {bookType:'xlsx', type:'array'})], {type:'application/octet-stream'});
+            var wbout = XLSX.write(wb, {bookType:'xlsx', type:'array'});
+            var blob = new Blob([wbout], {type:'application/octet-stream'});
 
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url; a.download = 'ead_classificado.xlsx';
-            document.body.appendChild(a); a.click();
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = 'ead_classificado.xlsx';
+            document.body.appendChild(a);
+            a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
         }
