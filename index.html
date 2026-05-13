@@ -3,536 +3,484 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EAD Classifier v4.1</title>
+    <title>Gestão EAD - Classificador de Buckets v2</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #1a1a2e; color: #e0e0e0; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 20px; }
-        .header { text-align: center; margin-bottom: 20px; }
-        .header h1 { font-size: 2em; color: #00d4ff; margin-bottom: 5px; }
-        .header p { color: #888; font-size: 0.85em; }
-        .header .version-tag { display: inline-block; background: #6366f1; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 0.7em; margin-top: 4px; }
-        .rules-info { background: #16213e; border: 1px solid #0f3460; border-radius: 8px; padding: 12px 18px; margin-bottom: 20px; max-width: 800px; width: 100%; }
-        .rules-info h3 { color: #00d4ff; font-size: 0.9em; margin-bottom: 8px; }
-        .rules-info ul { list-style: none; padding: 0; }
-        .rules-info li { padding: 3px 0; font-size: 0.8em; color: #ccc; }
-        .rules-info .sub { margin-left: 20px; font-size: 0.75em; color: #999; }
-        .container { background: #16213e; border-radius: 12px; padding: 30px; max-width: 800px; width: 100%; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
-        .section { margin-bottom: 25px; }
-        .section-title { font-size: 1em; color: #00d4ff; margin-bottom: 12px; font-weight: 600; }
-        .drop-zone { border: 2px dashed #0f3460; border-radius: 8px; padding: 40px 20px; text-align: center; cursor: pointer; transition: all 0.3s; }
-        .drop-zone:hover, .drop-zone.dragover { border-color: #00d4ff; background: rgba(0,212,255,0.05); }
-        .drop-zone p { color: #888; margin-top: 8px; font-size: 0.8em; }
-        .drop-zone .icon { font-size: 2em; }
-        #fileInput { display: none; }
-        .results { display: none; }
-        .stat-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 15px; }
-        .stat-box { background: #0f3460; border-radius: 8px; padding: 12px; text-align: center; }
-        .stat-box .value { font-size: 1.3em; font-weight: bold; color: #00d4ff; }
-        .stat-box .label { font-size: 0.65em; color: #888; margin-top: 4px; }
-        .stat-box.utr .value { color: #fbbf24; }
-        .stat-box.mnr .value { color: #a78bfa; }
-        .stat-box.perda .value { color: #f87171; }
-        .stat-box.blank .value { color: #94a3b8; }
-        .bucket-table { width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 0.78em; }
-        .bucket-table th { text-align: left; color: #00d4ff; padding: 6px 8px; border-bottom: 1px solid #0f3460; font-weight: 500; }
-        .bucket-table td { padding: 5px 8px; border-bottom: 1px solid #0a1628; color: #ccc; }
-        .bucket-table tr:hover td { background: rgba(0,212,255,0.05); }
-        .btn { display: inline-block; padding: 12px 24px; border: none; border-radius: 8px; font-size: 0.9em; cursor: pointer; transition: all 0.3s; margin: 5px; }
-        .btn-class { background: #6366f1; color: #fff; }
-        .btn-class:hover { background: #4f46e5; }
-        .buttons { text-align: center; }
-        .loading { display: none; text-align: center; padding: 20px; }
-        .loading .spinner { border: 3px solid #0f3460; border-top: 3px solid #00d4ff; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 0 auto 10px; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .error { display: none; background: #d63031; color: #fff; padding: 12px; border-radius: 8px; margin-bottom: 15px; font-size: 0.85em; }
-        .version { color: #555; font-size: 0.7em; margin-top: 20px; text-align: center; }
-        .separator { border: none; border-top: 1px solid #0f3460; margin: 20px 0; }
-        .tag { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 0.7em; margin-left: 4px; }
-        .tag-utr { background: rgba(251,191,36,0.2); color: #fbbf24; }
-        .tag-mnr { background: rgba(167,139,250,0.2); color: #a78bfa; }
-        .tag-blank { background: rgba(148,163,184,0.2); color: #94a3b8; }
+        body { font-family: system-ui, -apple-system, sans-serif; background: #f5f7fa; color: #1a1a2e; padding: 20px; }
+        h1 { text-align: center; margin-bottom: 8px; color: #1a1a2e; font-size: 22px; }
+        .subtitle { text-align: center; color: #666; font-size: 13px; margin-bottom: 24px; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        
+        /* Input Section */
+        .input-section { background: #fff; border-radius: 8px; padding: 20px; margin-bottom: 20px; border: 1px solid #e0e0e0; }
+        .input-section h2 { font-size: 15px; margin-bottom: 12px; color: #333; }
+        .input-section p { font-size: 12px; color: #666; margin-bottom: 10px; }
+        textarea { width: 100%; height: 180px; font-family: monospace; font-size: 11px; padding: 10px; border: 1px solid #ddd; border-radius: 6px; resize: vertical; }
+        
+        /* Buttons */
+        .btn-row { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+        button { padding: 10px 20px; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+        .btn-primary { background: #232f3e; color: #fff; }
+        .btn-primary:hover { background: #37475a; }
+        .btn-export { background: #0073bb; color: #fff; }
+        .btn-export:hover { background: #005a94; }
+        .btn-clear { background: #eee; color: #333; }
+        .btn-clear:hover { background: #ddd; }
+        
+        /* Stats */
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px; }
+        .stat-card { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 14px; text-align: center; }
+        .stat-card .label { font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 0.05em; }
+        .stat-card .value { font-size: 24px; font-weight: 700; font-family: monospace; color: #232f3e; margin-top: 4px; }
+        
+        /* Table */
+        .table-section { background: #fff; border-radius: 8px; padding: 16px; border: 1px solid #e0e0e0; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 11px; }
+        th { background: #232f3e; color: #fff; padding: 8px 10px; text-align: left; font-weight: 500; white-space: nowrap; }
+        td { padding: 6px 10px; border-bottom: 1px solid #eee; white-space: nowrap; }
+        tr:hover td { background: #f0f4f8; }
+        
+        /* Bucket colors */
+        .bucket-tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; }
+        .b-perda { background: #fee2e2; color: #991b1b; }
+        .b-atraso { background: #fef3c7; color: #92400e; }
+        .b-erro-stow { background: #ede9fe; color: #5b21b6; }
+        .b-mnr-utr { background: #dbeafe; color: #1e40af; }
+        .b-mnr-otr { background: #e0e7ff; color: #3730a3; }
+        .b-mnr-pudo { background: #d1fae5; color: #065f46; }
+        .b-app { background: #f3f4f6; color: #374151; }
+        .b-missort { background: #fce7f3; color: #9d174d; }
+        .b-reslammed { background: #ccfbf1; color: #115e59; }
+        .b-wrong { background: #fff1f2; color: #881337; }
+        .b-departure { background: #fef9c3; color: #713f12; }
+        
+        /* Legend */
+        .legend { background: #fff; border-radius: 8px; padding: 16px; border: 1px solid #e0e0e0; margin-bottom: 20px; }
+        .legend h3 { font-size: 13px; margin-bottom: 10px; }
+        .legend-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 6px; font-size: 11px; }
+        .legend-item { display: flex; align-items: center; gap: 6px; }
+        .legend-dot { width: 10px; height: 10px; border-radius: 3px; }
+        
+        /* Format info */
+        .format-box { background: #fffbeb; border: 1px solid #f59e0b; border-radius: 6px; padding: 12px; margin-top: 12px; font-size: 11px; }
+        .format-box code { background: #f3f4f6; padding: 1px 4px; border-radius: 3px; font-size: 10px; }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>EAD Classifier v4.1</h1>
-        <p>Entrada: OBLT | Saída: Modelo Gestão EAD com Bucket e Sub-Bucket</p>
-        <span class="version-tag">PUDO = EVENT_105 | Alinhado com referência manual</span>
-    </div>
-    <div class="rules-info">
-        <h3>&#x1F7E2; Regras Prioritárias:</h3>
-        <ul>
-            <li>&#x1F534; EVENT_238 presente &rarr; Bucket: Reslammed</li>
-            <li>&#x1F534; EVENT_414 presente &rarr; Bucket: Missort</li>
-        </ul>
-        <h3 style="margin-top:10px;">&#x1F7E1; Regras UTR Error (tem 201 no SPC):</h3>
-        <ul>
-            <li>Perda de CPT: 103 e 201 mesmo dia, 202 em dia diferente OU 202 &gt; EAD</li>
-            <li>Atraso na chegada no SPC: 201 em dia diferente do 103</li>
-            <li>APP finalizado e não processado: 103 e 216 mesmo dia, 201 em dia diferente</li>
-            <li>Erro Departure: 103 e 201 mesmo dia, sem 202</li>
-            <li>Erro Stow: sem 201 no SPC, mas tem 202 no SPC</li>
-        </ul>
-        <h3 style="margin-top:10px;">&#x1F7E3; Regras MNR (sem 201 e sem 202 no SPC):</h3>
-        <ul>
-            <li>APP finalizado e não processado: tem 216 no SPC</li>
-            <li>MNR - PUDO last bip: tem EVENT_105 na rota</li>
-            <li>MNR - UTR last bip: Route passa por node PN</li>
-            <li>MNR - OTR last bip: Demais casos</li>
-        </ul>
-        <h3 style="margin-top:10px;">&#x1F4CB; Sub-Bucket automático:</h3>
-        <ul>
-            <li class="sub">Perda de CPT &rarr; Erro Operacional</li>
-            <li class="sub">APP finalizado (com 201) &rarr; SPC deixou pacote no piso</li>
-            <li class="sub">APP finalizado (sem 201/MNR) &rarr; Atraso DA</li>
-            <li class="sub">Atraso na chegada (tem EVENT_105) &rarr; PUDO</li>
-            <li class="sub">Atraso na chegada (sem EVENT_105) &rarr; Atraso DA</li>
-            <li class="sub">MNR - OTR last bip &rarr; Atraso DA</li>
-            <li class="sub">MNR - UTR last bip &rarr; Erro Operacional</li>
-            <li class="sub">MNR - PUDO last bip &rarr; PUDO</li>
-            <li class="sub">Missort &rarr; Missort</li>
-            <li class="sub">Erro Stow &rarr; Erro Operacional</li>
-            <li class="sub">Demais: em branco (avaliação manual)</li>
-        </ul>
-    </div>
     <div class="container">
-        <div class="error" id="errorMsg"></div>
-        <div class="section">
-            <div class="section-title">1. Carregar arquivo OBLT (.xlsx)</div>
-            <div class="drop-zone" id="dropZone">
-                <div class="icon">&#x1F4C2;</div>
-                Arraste o arquivo OBLT .xlsx aqui ou clique para selecionar
-                <p>Colunas esperadas: tracking_id, status_event, status_date, status_node_id</p>
+        <h1>📦 Gestão EAD - Classificador de Buckets v2</h1>
+        <p class="subtitle">Lógica de classificação com regra PUDO baseada em Eventos (103, 105, 201, 216)</p>
+        
+        <div class="input-section">
+            <h2>📋 Colar dados (TSV/Tab-separated)</h2>
+            <p>Cole os dados com as colunas: <strong>tracking_id | route | node | estimated_arrival | expected_pickup | event_201 | event_202 | event_103 | event_216 | event_105 | classificacao | cpt_status | obs</strong></p>
+            <textarea id="inputData" placeholder="Cole aqui os dados separados por TAB (copie direto do Excel)...
+Exemplo:
+TBR352372995&#9;REDACTED->ECB8->DPR2&#9;ECB8&#9;2026-05-06&#9;2026-05-05 23:59&#9;2026-05-05 18:35&#9;2026-05-05 20:07&#9;2026-05-05 10:00&#9;2026-05-05 18:00&#9;&#9;MNR&#9;Stow Miss&#9;"></textarea>
+            
+            <div class="format-box">
+                <strong>⚠️ Colunas obrigatórias (na ordem):</strong><br>
+                <code>tracking_id</code> | <code>route</code> | <code>node</code> | <code>estimated_arrival_brt</code> | <code>expected_pickup_brt</code> | <code>event_201_brt</code> | <code>event_202_brt</code> | <code>event_103_brt</code> | <code>event_216_brt</code> | <code>event_105_brt</code> | <code>Classificação</code> | <code>CPT Status</code> | <code>Obs</code><br><br>
+                <strong>💡 Datas:</strong> Formato YYYY-MM-DD ou YYYY-MM-DD HH:MM:SS | Deixe vazio se não existir o evento<br>
+                <strong>💡 Event_216:</strong> Se houver 2 ocorrências, separe por <code>;</code> (ex: 2026-05-05 10:00;2026-05-05 18:00)
             </div>
-            <input type="file" id="fileInput" accept=".xlsx">
+            
+            <div class="btn-row">
+                <button class="btn-primary" onclick="processData()">🚀 Classificar</button>
+                <button class="btn-export" onclick="exportCSV()">📥 Exportar CSV</button>
+                <button class="btn-export" onclick="exportTSV()">📥 Exportar TSV (Excel)</button>
+                <button class="btn-clear" onclick="clearAll()">🗑️ Limpar</button>
+            </div>
         </div>
-        <div class="loading" id="loading">
-            <div class="spinner"></div>
-            <p>Processando OBLT e classificando...</p>
+        
+        <!-- Stats -->
+        <div class="stats" id="statsArea"></div>
+        
+        <!-- Legend -->
+        <div class="legend">
+            <h3>🎯 Árvore de Decisão (Ordem de Prioridade)</h3>
+            <div class="legend-grid">
+                <div class="legend-item"><div class="legend-dot" style="background:#fff1f2"></div> 1. Wrong Node (MNR + Obs "wrong node")</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#ccfbf1"></div> 2. Reslammed (UTR Error + CPT Miss + rota sem REDACTED)</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#fce7f3"></div> 3. Missort (Obs contém "missort")</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#fef9c3"></div> 4. Erro Departure (Obs "s/ bip 202")</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#fee2e2"></div> 5. Perda de CPT (CPT Miss OU UTR+ELP7/ESP8 sem arrival)</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#ede9fe"></div> 6. Erro Stow (MNR + sem 201/202 + "sem bip" ou EUR8/ESA8)</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#d1fae5"></div> 7. MNR-PUDO last bip (MNR + is_pudo + sem arrival)</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#dbeafe"></div> 8. MNR-UTR last bip (MNR + Stow Miss + ESP8/ELP7/ERJ1)</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#e0e7ff"></div> 9. MNR-OTR last bip (MNR + sem 201/202 + Obs "DA")</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#fef3c7"></div> 10. Atraso na chegada no SPC (UTR Error + Stow/CPT Miss)</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#f3f4f6"></div> 11. APP finalizado e não processado (catch-all)</div>
+            </div>
         </div>
-        <div class="section results" id="results">
-            <div class="section-title">2. Resultado <span class="tag tag-utr">UTR</span> <span class="tag tag-mnr">MNR</span> <span class="tag tag-blank">Manual</span></div>
-            <div class="stat-grid">
-                <div class="stat-box"><div class="value" id="totalRows">0</div><div class="label">Total trackings</div></div>
-                <div class="stat-box utr"><div class="value" id="utrTotal">0</div><div class="label">UTR Error</div></div>
-                <div class="stat-box mnr"><div class="value" id="mnrTotal">0</div><div class="label">MNR</div></div>
-                <div class="stat-box perda"><div class="value" id="perdaTotal">0</div><div class="label">Perda de CPT</div></div>
-                <div class="stat-box blank"><div class="value" id="blankTotal">0</div><div class="label">Em branco</div></div>
-            </div>
-            <table class="bucket-table" id="bucketTable">
-                <thead><tr><th>Bucket</th><th>Qtd</th><th>%</th></tr></thead>
-                <tbody id="bucketBody"></tbody>
+        
+        <!-- Results Table -->
+        <div class="table-section">
+            <table id="resultsTable">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Tracking ID</th>
+                        <th>Node</th>
+                        <th>Classificação</th>
+                        <th>CPT Status</th>
+                        <th>Bucket</th>
+                        <th>Sub-Bucket</th>
+                        <th>PUDO?</th>
+                        <th>Regra</th>
+                    </tr>
+                </thead>
+                <tbody id="resultsBody"></tbody>
             </table>
-            <hr class="separator">
-            <table class="bucket-table" id="subTable">
-                <thead><tr><th>Sub-Bucket</th><th>Qtd</th><th>%</th></tr></thead>
-                <tbody id="subBody"></tbody>
-            </table>
-            <hr class="separator">
-            <div class="section-title">3. Download</div>
-            <div class="buttons">
-                <button class="btn btn-class" onclick="downloadResult()">&#x1F4CA; Download Gestão EAD (.xlsx)</button>
-            </div>
         </div>
     </div>
-    <div class="version">EAD Classifier v4.1 | PUDO = EVENT_105 | PN nodes hardcoded</div>
-    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+
     <script>
-    (function(){
-        var PN_NODES = ['EVE8','EIJ8','EME8','EJO8','EUM8','EMR8'];
-        var FIRST_IDX = 0;
+        // =====================================================================
+        // LÓGICA DE CLASSIFICAÇÃO v2 - COM PUDO BASEADO EM EVENTOS
+        // =====================================================================
 
-        var SUB_MAP = {
-            'Perda de CPT': 'Erro Operacional',
-            'APP finalizado e não processado (UTR)': 'SPC deixou pacote no piso',
-            'APP finalizado e não processado (MNR)': 'Atraso DA',
-            'Atraso na chegada no SPC (PUDO)': 'PUDO',
-            'Atraso na chegada no SPC': 'Atraso DA',
-            'MNR - OTR last bip': 'Atraso DA',
-            'MNR - UTR last bip': 'Erro Operacional',
-            'MNR - PUDO last bip': 'PUDO',
-            'Missort': 'Missort',
-            'Erro Stow': 'Erro Operacional',
-            'Erro Departure': '',
-            'Reslammed': ''
-        };
-
-        var BUCKET_COLORS = {
-            'Atraso na chegada no SPC': 'FFC000',
-            'APP finalizado e não processado': 'FF66FF',
-            'Perda de CPT': 'E6CCFF',
-            'Erro Departure': '556B2F',
-            'Erro Stow': '4472C4',
-            'MNR - OTR last bip': 'FF7F7F',
-            'MNR - UTR last bip': 'C6EFCE',
-            'MNR - PUDO last bip': 'BDD7EE',
-            'Reslammed': '808000',
-            'Missort': '92D050'
-        };
-
-        var SUB_COLORS = {
-            'SPC deixou pacote no piso': 'FFFF00',
-            'Atraso DA': 'FFA500',
-            'Erro Operacional': '008000',
-            'PUDO': 'BDD7EE',
-            'Missort': 'C0C0C0'
-        };
-
-        var HEADER_STYLE = {
-            font: { bold: true, color: { rgb: "FFFFFF" } },
-            fill: { fgColor: { rgb: "4472C4" } },
-            alignment: { horizontal: "center", vertical: "center" }
-        };
-        var BAND_STYLE = { fill: { fgColor: { rgb: "C0E6F5" } }, font: { color: { rgb: "000000" } } };
-        var PLAIN_STYLE = { fill: { fgColor: { rgb: "FFFFFF" } }, font: { color: { rgb: "000000" } } };
-
-        var gOutputData = [];
-        var OUTPUT_HEADERS = ['tracking id','route','node','estimated_arrival_datetime_brt','expected_pickup_datetime_brt','arrived_or_event_201_brt','departure_or_event_202_brt','Classificação','CPT Status','Bucket','Sub-Bucket','Obs'];
-
-        function parseDate(val){
-            if(!val) return null;
-            var s = String(val).trim();
-            if(s===''||s==='NaN'||s==='None'||s==='nan'||s==='NaT'||s==='undefined') return null;
-            var d = new Date(s);
-            if(isNaN(d.getTime())) return null;
-            return d;
+        function parseDate(str) {
+            if (!str || str.trim() === '' || str === 'NaT' || str === 'null' || str === 'undefined') return null;
+            const d = new Date(str.trim());
+            return isNaN(d.getTime()) ? null : d;
         }
 
-        function dateOnly(d){
-            if(!d) return '';
-            return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+        function getDateOnly(dt) {
+            if (!dt) return null;
+            return dt.toISOString().split('T')[0];
         }
 
-        function formatDT(d){
-            if(!d) return '';
-            return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+':'+String(d.getSeconds()).padStart(2,'0');
+        function parseDateList(str) {
+            if (!str || str.trim() === '') return [];
+            return str.split(';').map(s => parseDate(s.trim())).filter(d => d !== null);
         }
 
-        function routeHasPN(nodes){
-            for(var i=0;i<nodes.length;i++){
-                if(PN_NODES.indexOf(nodes[i])!==-1) return true;
+        // ─────────────────────────────────────────────────────────────────
+        // FUNÇÃO PUDO: Baseada em Event_103, Event_105, Event_201, Event_216
+        // ─────────────────────────────────────────────────────────────────
+        function isPudo(row) {
+            const event_103 = parseDate(row.event_103);
+            const event_105 = parseDate(row.event_105);
+            const event_201 = parseDate(row.event_201);
+            const events_216 = parseDateList(row.event_216);
+
+            // CONDIÇÃO 0: Existe Event_105
+            if (event_105 !== null) return true;
+
+            // CONDIÇÃO 1: Tem Event_103 mas NÃO tem Event_216
+            if (event_103 !== null && events_216.length === 0) return true;
+
+            // CONDIÇÃO 2: NENHUM Event_201 coincide em data com Event_103
+            if (event_103 !== null && event_201 !== null) {
+                const data_103 = getDateOnly(event_103);
+                const data_201 = getDateOnly(event_201);
+                if (data_103 !== data_201) return true;
             }
+
+            // CONDIÇÃO 3: NENHUM Event_216 coincide em data com Event_103
+            if (event_103 !== null && events_216.length > 0) {
+                const data_103 = getDateOnly(event_103);
+                const datas_216 = events_216.map(d => getDateOnly(d));
+                if (!datas_216.includes(data_103)) return true;
+            }
+
             return false;
         }
 
-        function buildRoute(events){
-            var visited = [];
-            var seen = {};
-            events.sort(function(a,b){ return (a.date||0) - (b.date||0); });
-            for(var i=0;i<events.length;i++){
-                var n = events[i].node;
-                if(n && !seen[n]){
-                    seen[n] = true;
-                    visited.push(n);
+        // ─────────────────────────────────────────────────────────────────
+        // CLASSIFICAÇÃO DE BUCKET
+        // ─────────────────────────────────────────────────────────────────
+        function classificarBucket(row) {
+            const classificacao = (row.classificacao || '').trim();
+            const cptStatus = (row.cpt_status || '').trim();
+            const node = (row.node || '').trim();
+            const hasArrival = parseDate(row.event_201) !== null;
+            const hasDeparture = parseDate(row.event_202) !== null;
+            const obs = (row.obs || '').toLowerCase().trim();
+            const route = (row.route || '').trim();
+
+            // REGRA 1: WRONG NODE
+            if (classificacao === 'MNR' && obs.includes('wrong node')) {
+                return { bucket: 'Wrong Node', regra: 'R1' };
+            }
+
+            // REGRA 2: RESLAMMED
+            if (classificacao === 'UTR Error' && cptStatus === 'CPT Miss') {
+                if (hasArrival && hasDeparture && !route.startsWith('REDACTED')) {
+                    return { bucket: 'Reslammed', regra: 'R2' };
                 }
             }
-            var route = 'REDACTED';
-            for(var j=0;j<visited.length;j++){
-                route += '->' + visited[j];
+
+            // REGRA 3: MISSORT
+            if (obs.includes('missort')) {
+                return { bucket: 'Missort', regra: 'R3' };
             }
-            return route;
+
+            // REGRA 4: ERRO DEPARTURE
+            if (obs.includes('s/ bip 202') || obs.includes('sem bip 202') || obs.includes('s\\bip 202') || obs.includes('s\\ bip 202')) {
+                return { bucket: 'Erro Departure', regra: 'R4' };
+            }
+
+            // REGRA 5: PERDA DE CPT
+            if (cptStatus === 'CPT Miss') {
+                return { bucket: 'Perda de CPT', regra: 'R5a' };
+            }
+            if (['ELP7', 'ESP8', 'ESD8'].includes(node)) {
+                if (classificacao === 'UTR Error' && !hasArrival) {
+                    return { bucket: 'Perda de CPT', regra: 'R5b' };
+                }
+                if (classificacao === 'MNR' && !hasArrival && node === 'ELP7') {
+                    return { bucket: 'Perda de CPT', regra: 'R5c' };
+                }
+            }
+
+            // REGRA 6: ERRO STOW
+            if (classificacao === 'MNR' && cptStatus === 'Stow Miss') {
+                if (!hasArrival && !hasDeparture) {
+                    if (obs.includes('sem bip') || obs.includes('s/ bip') || obs.includes('seguiu caminho')) {
+                        return { bucket: 'Erro Stow', regra: 'R6a' };
+                    }
+                    if (['EUR8', 'ESA8'].includes(node)) {
+                        return { bucket: 'Erro Stow', regra: 'R6b' };
+                    }
+                }
+            }
+
+            // REGRA 7: MNR - PUDO LAST BIP
+            if (classificacao === 'MNR' && !hasArrival) {
+                if (isPudo(row)) {
+                    return { bucket: 'MNR - PUDO last bip', regra: 'R7' };
+                }
+            }
+
+            // REGRA 8: MNR - UTR LAST BIP
+            if (classificacao === 'MNR' && cptStatus === 'Stow Miss') {
+                if (!hasArrival || obs.includes('s/ bip') || obs.includes('sem bip')) {
+                    if (['ESP8', 'ELP7', 'ERJ1', 'ERP8'].includes(node)) {
+                        return { bucket: 'MNR - UTR last bip', regra: 'R8' };
+                    }
+                }
+            }
+
+            // REGRA 9: MNR - OTR LAST BIP
+            if (classificacao === 'MNR' && cptStatus === 'Stow Miss') {
+                if (!hasArrival && !hasDeparture) {
+                    if (obs.includes('da ') || obs.includes('da-') || obs.includes('da:')) {
+                        return { bucket: 'MNR - OTR last bip', regra: 'R9' };
+                    }
+                }
+            }
+
+            // REGRA 10: ATRASO NA CHEGADA NO SPC
+            if (classificacao === 'UTR Error' && ['Stow Miss', 'CPT Miss'].includes(cptStatus)) {
+                return { bucket: 'Atraso na chegada no SPC', regra: 'R10' };
+            }
+
+            // REGRA 11: APP FINALIZADO (catch-all)
+            return { bucket: 'APP finalizado e não processado', regra: 'R11' };
         }
 
-        function classifyTracking(info){
-            if(info.has238) return {bucket:'Reslammed', classificacao:'UTR Error', cptStatus:'Stow Miss', subKey:'Reslammed'};
-            if(info.has414) return {bucket:'Missort', classificacao:'UTR Error', cptStatus:'Stow Miss', subKey:'Missort'};
+        // ─────────────────────────────────────────────────────────────────
+        // CLASSIFICAÇÃO DE SUB-BUCKET
+        // ─────────────────────────────────────────────────────────────────
+        function classificarSubBucket(row, bucket) {
+            const obs = (row.obs || '').toLowerCase().trim();
 
-            var d103 = dateOnly(info.date103);
-            var d201 = dateOnly(info.date201spc);
-            var d202 = dateOnly(info.date202spc);
-            var d216 = dateOnly(info.date216spc);
-
-            if(!info.has201spc && info.has202spc){
-                return {bucket:'Erro Stow', classificacao:'UTR Error', cptStatus:'Stow Miss', subKey:'Erro Stow'};
+            switch (bucket) {
+                case 'Missort':
+                    return 'Missort';
+                case 'Wrong Node':
+                    return '';
+                case 'Reslammed':
+                    return '';
+                case 'MNR - PUDO last bip':
+                    return 'PUDO';
+                case 'Perda de CPT':
+                    if (obs.includes('mm') || obs.includes('carro') || obs.includes('middle mile')) return 'Problema MM';
+                    return 'Erro Operacional';
+                case 'Erro Stow':
+                    if (obs.includes('gestão') || obs.includes('gestao')) return 'Falha Gestão';
+                    return 'Erro Operacional';
+                case 'Erro Departure':
+                    return 'Erro Operacional';
+                case 'MNR - UTR last bip':
+                    if (obs.includes('piso') || obs.includes('deixou')) return 'SPC deixou pacote no piso';
+                    if (obs.includes('missort')) return 'Missort';
+                    return 'Erro Operacional';
+                case 'MNR - OTR last bip':
+                    if (obs.includes('da ') || obs.includes('da-') || obs.includes('da:')) return 'Atraso DA';
+                    return 'Erro Operacional';
+                case 'Atraso na chegada no SPC':
+                    if (isPudo(row)) return 'PUDO';
+                    return 'Atraso DA';
+                case 'APP finalizado e não processado':
+                    if (obs.includes('piso') || obs.includes('deixou')) return 'SPC deixou pacote no piso';
+                    return 'Atraso DA';
+                default:
+                    return '';
             }
-
-            if(!info.has201spc && !info.has202spc){
-                if(info.has216spc){
-                    return {bucket:'APP finalizado e não processado', classificacao:'MNR', cptStatus:'Stow Miss', subKey:'APP finalizado e não processado (MNR)'};
-                }
-                if(info.hasEvent105){
-                    return {bucket:'MNR - PUDO last bip', classificacao:'MNR', cptStatus:'Stow Miss', subKey:'MNR - PUDO last bip'};
-                }
-                if(routeHasPN(info.allNodes)){
-                    return {bucket:'MNR - UTR last bip', classificacao:'MNR', cptStatus:'Stow Miss', subKey:'MNR - UTR last bip'};
-                }
-                return {bucket:'MNR - OTR last bip', classificacao:'MNR', cptStatus:'Stow Miss', subKey:'MNR - OTR last bip'};
-            }
-
-            if(info.has201spc){
-                var same103_201 = (d103 && d201 && d103 === d201);
-
-                if(same103_201){
-                    if(!info.has202spc){
-                        return {bucket:'Erro Departure', classificacao:'UTR Error', cptStatus:'CPT Miss', subKey:'Erro Departure'};
-                    }
-                    var same103_202 = (d103 && d202 && d103 === d202);
-                    if(same103_202){
-                        if(info.dateEAD && info.date202spc && info.date202spc > info.dateEAD){
-                            return {bucket:'Perda de CPT', classificacao:'UTR Error', cptStatus:'CPT Miss', subKey:'Perda de CPT'};
-                        }
-                        return {bucket:'', classificacao:'UTR Error', cptStatus:'Stow Miss', subKey:''};
-                    }
-                    return {bucket:'Perda de CPT', classificacao:'UTR Error', cptStatus:'CPT Miss', subKey:'Perda de CPT'};
-                } else {
-                    if(d103 && d216 && d103 === d216){
-                        return {bucket:'APP finalizado e não processado', classificacao:'UTR Error', cptStatus:'Stow Miss', subKey:'APP finalizado e não processado (UTR)'};
-                    }
-                    if(info.hasEvent105){
-                        return {bucket:'Atraso na chegada no SPC', classificacao:'UTR Error', cptStatus:'Stow Miss', subKey:'Atraso na chegada no SPC (PUDO)'};
-                    }
-                    return {bucket:'Atraso na chegada no SPC', classificacao:'UTR Error', cptStatus:'Stow Miss', subKey:'Atraso na chegada no SPC'};
-                }
-            }
-
-            return {bucket:'', classificacao:'', cptStatus:'', subKey:''};
         }
 
-        var dropZone=document.getElementById('dropZone');
-        var fileInput=document.getElementById('fileInput');
-        dropZone.addEventListener('click',function(){fileInput.click();});
-        dropZone.addEventListener('dragover',function(e){e.preventDefault();dropZone.classList.add('dragover');});
-        dropZone.addEventListener('dragleave',function(){dropZone.classList.remove('dragover');});
-        dropZone.addEventListener('drop',function(e){
-            e.preventDefault();
-            dropZone.classList.remove('dragover');
-            var f=e.dataTransfer.files.item(0);
-            if(f) processFile(f);
-        });
-        fileInput.addEventListener('change',function(e){
-            var f=e.target.files.item(0);
-            if(f) processFile(f);
-        });
+        // ─────────────────────────────────────────────────────────────────
+        // PROCESSAR DADOS
+        // ─────────────────────────────────────────────────────────────────
+        let resultados = [];
 
-        function processFile(file){
-            if(!file.name.endsWith('.xlsx')){alert('Selecione .xlsx');return;}
-            document.getElementById('loading').style.display='block';
-            document.getElementById('results').style.display='none';
-            document.getElementById('errorMsg').style.display='none';
-            var reader=new FileReader();
-            reader.onload=function(ev){
-                try{
-                    var wb=XLSX.read(ev.target.result,{type:'array',cellDates:false});
-                    var firstSheetName=wb.SheetNames[FIRST_IDX];
-                    var sheet=wb.Sheets[firstSheetName];
-                    var raw=XLSX.utils.sheet_to_json(sheet,{header:1,raw:true,defval:''});
-                    if(raw.length<2) throw new Error('Arquivo vazio');
+        function processData() {
+            const raw = document.getElementById('inputData').value.trim();
+            if (!raw) { alert('Cole os dados primeiro!'); return; }
 
-                    var headers=raw[FIRST_IDX];
-                    var h={};
-                    for(var i=0;i<headers.length;i++){
-                        var colName=String(headers[i]).trim().toLowerCase().replace(/\s+/g,'_');
-                        h[colName]=i;
-                    }
+            const lines = raw.split('
+').filter(l => l.trim() !== '');
+            resultados = [];
 
-                    if(h['tracking_id']===undefined) throw new Error('Coluna tracking_id nao encontrada. Colunas: '+headers.join(', '));
-                    if(h['status_event']===undefined) throw new Error('Coluna status_event nao encontrada. Colunas: '+headers.join(', '));
-                    if(h['status_date']===undefined) throw new Error('Coluna status_date nao encontrada. Colunas: '+headers.join(', '));
-                    if(h['status_node_id']===undefined) throw new Error('Coluna status_node_id nao encontrada. Colunas: '+headers.join(', '));
+            // Verificar se primeira linha é header
+            let startIdx = 0;
+            const firstLine = lines[0].toLowerCase();
+            if (firstLine.includes('tracking') || firstLine.includes('route') || firstLine.includes('node')) {
+                startIdx = 1;
+            }
 
-                    var ti=h['tracking_id'], ei=h['status_event'], di=h['status_date'], ni=h['status_node_id'];
+            for (let i = startIdx; i < lines.length; i++) {
+                const cols = lines[i].split('\t');
+                if (cols.length < 11) continue;
 
-                    var trackings={};
-                    for(var r=1;r<raw.length;r++){
-                        var row=raw[r];
-                        if(!row||!row[ti]) continue;
-                        var tid=String(row[ti]).trim();
-                        if(!tid) continue;
-                        if(!trackings[tid]) trackings[tid]=[];
-                        var dateVal=row[di];
-                        var parsedDate=null;
-                        if(typeof dateVal==='number'){
-                            var dd=XLSX.SSF.parse_date_code(dateVal);
-                            if(dd) parsedDate=new Date(dd.y,dd.m-1,dd.d,dd.H||0,dd.M||0,dd.S||0);
-                        } else {
-                            parsedDate=parseDate(dateVal);
-                        }
-                        trackings[tid].push({
-                            event: String(row[ei]||'').trim(),
-                            date: parsedDate,
-                            node: String(row[ni]||'').trim()
-                        });
-                    }
+                const row = {
+                    tracking_id: (cols[0] || '').trim(),
+                    route: (cols[1] || '').trim(),
+                    node: (cols[2] || '').trim(),
+                    estimated_arrival: (cols[3] || '').trim(),
+                    expected_pickup: (cols[4] || '').trim(),
+                    event_201: (cols[5] || '').trim(),
+                    event_202: (cols[6] || '').trim(),
+                    event_103: (cols[7] || '').trim(),
+                    event_216: (cols[8] || '').trim(),
+                    event_105: (cols[9] || '').trim(),
+                    classificacao: (cols[10] || '').trim(),
+                    cpt_status: (cols[11] || '').trim(),
+                    obs: (cols[12] || '').trim()
+                };
 
-                    gOutputData=[];
-                    var utrC=0, mnrC=0, blankC=0, perdaC=0;
-                    var bCounts={};
-                    var sCounts={};
+                const pudo = isPudo(row);
+                const { bucket, regra } = classificarBucket(row);
+                const subBucket = classificarSubBucket(row, bucket);
 
-                    var tids=Object.keys(trackings);
-                    for(var t=0;t<tids.length;t++){
-                        var tid=tids[t];
-                        var evts=trackings[tid];
+                resultados.push({
+                    ...row,
+                    bucket,
+                    subBucket,
+                    pudo,
+                    regra
+                });
+            }
 
-                        var e103=null;
-                        for(var j=0;j<evts.length;j++){
-                            if(evts[j].event==='EVENT_103'){e103=evts[j];break;}
-                        }
-                        if(!e103) continue;
+            renderResults();
+            renderStats();
+        }
 
-                        var spcNode=e103.node;
-                        var date103=e103.date;
-
-                        var date216spc=null, has216spc=false;
-                        for(var j=0;j<evts.length;j++){
-                            if(evts[j].event==='EVENT_216' && evts[j].node===spcNode){
-                                date216spc=evts[j].date; has216spc=true; break;
-                            }
-                        }
-
-                        var date201spc=null, has201spc=false;
-                        for(var j=0;j<evts.length;j++){
-                            if(evts[j].event==='EVENT_201' && evts[j].node===spcNode){
-                                date201spc=evts[j].date; has201spc=true; break;
-                            }
-                        }
-
-                        var date202spc=null, has202spc=false;
-                        for(var j=0;j<evts.length;j++){
-                            if(evts[j].event==='EVENT_202' && evts[j].node===spcNode){
-                                date202spc=evts[j].date; has202spc=true; break;
-                            }
-                        }
-
-                        var has238=false, has414=false, hasEvent105=false;
-                        for(var j=0;j<evts.length;j++){
-                            if(evts[j].event==='EVENT_238') has238=true;
-                            if(evts[j].event==='EVENT_414') has414=true;
-                            if(evts[j].event==='EVENT_105') hasEvent105=true;
-                        }
-
-                        var allNodes=[];
-                        var seenNodes={};
-                        for(var j=0;j<evts.length;j++){
-                            var nd=evts[j].node;
-                            if(nd && !seenNodes[nd]){seenNodes[nd]=true;allNodes.push(nd);}
-                        }
-
-                        var route=buildRoute(evts);
-
-                        var dateEAD=null, estArrival='';
-                        for(var j=0;j<evts.length;j++){
-                            if(evts[j].event==='EVENT_301'||evts[j].event==='EVENT_302'){
-                                dateEAD=evts[j].date; estArrival=formatDT(evts[j].date); break;
-                            }
-                        }
-                        if(!dateEAD && date103){
-                            dateEAD=new Date(date103.getFullYear(), date103.getMonth(), date103.getDate()+1, 0, 0, 0);
-                            estArrival=formatDT(dateEAD);
-                        }
-
-                        var result=classifyTracking({
-                            has238:has238, has414:has414, hasEvent105:hasEvent105,
-                            spcNode:spcNode, date103:date103,
-                            date216spc:date216spc, has216spc:has216spc,
-                            date201spc:date201spc, date202spc:date202spc,
-                            has201spc:has201spc, has202spc:has202spc,
-                            allNodes:allNodes, dateEAD:dateEAD
-                        });
-
-                        var bucket=result.bucket;
-                        var classificacao=result.classificacao;
-                        var cptStatus=result.cptStatus;
-                        var subKey=result.subKey;
-                        var subBucket=SUB_MAP.hasOwnProperty(subKey)?SUB_MAP[subKey]:'';
-
-                        if(classificacao==='UTR Error') utrC++;
-                        else if(classificacao==='MNR') mnrC++;
-                        if(bucket==='Perda de CPT') perdaC++;
-                        if(!bucket) blankC++;
-
-                        var bk=bucket||'Em branco (manual)';
-                        bCounts[bk]=(bCounts[bk]||0)+1;
-                        var sk=subBucket||'Em branco (manual)';
-                        sCounts[sk]=(sCounts[sk]||0)+1;
-
-                        gOutputData.push([
-                            tid, route, spcNode, estArrival,
-                            formatDT(date103), formatDT(date201spc), formatDT(date202spc),
-                            classificacao, cptStatus, bucket, subBucket, ''
-                        ]);
-                    }
-
-                    var total=gOutputData.length;
-                    document.getElementById('totalRows').textContent=total.toLocaleString('pt-BR');
-                    document.getElementById('utrTotal').textContent=utrC.toLocaleString('pt-BR');
-                    document.getElementById('mnrTotal').textContent=mnrC.toLocaleString('pt-BR');
-                    document.getElementById('perdaTotal').textContent=perdaC.toLocaleString('pt-BR');
-                    document.getElementById('blankTotal').textContent=blankC.toLocaleString('pt-BR');
-
-                    var entries=[];
-                    for(var key in bCounts){if(bCounts.hasOwnProperty(key))entries.push({n:key,c:bCounts[key]});}
-                    entries.sort(function(a,b){return b.c-a.c;});
-                    var bHTML='';
-                    for(var k=0;k<entries.length;k++){
-                        var pct=((entries[k].c/(total||1))*100).toFixed(1);
-                        bHTML+='<tr><td>'+entries[k].n+'</td><td>'+entries[k].c+'</td><td>'+pct+'%</td></tr>';
-                    }
-                    document.getElementById('bucketBody').innerHTML=bHTML;
-
-                    var sEntries=[];
-                    for(var key in sCounts){if(sCounts.hasOwnProperty(key))sEntries.push({n:key,c:sCounts[key]});}
-                    sEntries.sort(function(a,b){return b.c-a.c;});
-                    var sHTML='';
-                    for(var k=0;k<sEntries.length;k++){
-                        var pct=((sEntries[k].c/(total||1))*100).toFixed(1);
-                        sHTML+='<tr><td>'+sEntries[k].n+'</td><td>'+sEntries[k].c+'</td><td>'+pct+'%</td></tr>';
-                    }
-                    document.getElementById('subBody').innerHTML=sHTML;
-
-                    document.getElementById('loading').style.display='none';
-                    document.getElementById('results').style.display='block';
-                }catch(err){
-                    document.getElementById('loading').style.display='none';
-                    var el=document.getElementById('errorMsg');
-                    el.textContent='Erro: '+err.message;
-                    el.style.display='block';
-                }
+        function getBucketClass(bucket) {
+            const map = {
+                'Perda de CPT': 'b-perda',
+                'Atraso na chegada no SPC': 'b-atraso',
+                'Erro Stow': 'b-erro-stow',
+                'MNR - UTR last bip': 'b-mnr-utr',
+                'MNR - OTR last bip': 'b-mnr-otr',
+                'MNR - PUDO last bip': 'b-mnr-pudo',
+                'APP finalizado e não processado': 'b-app',
+                'Missort': 'b-missort',
+                'Reslammed': 'b-reslammed',
+                'Wrong Node': 'b-wrong',
+                'Erro Departure': 'b-departure'
             };
-            reader.readAsArrayBuffer(file);
+            return map[bucket] || 'b-app';
         }
 
-        window.downloadResult=function(){
-            if(!gOutputData.length) return;
-            var all=[OUTPUT_HEADERS].concat(gOutputData);
-            var ws=XLSX.utils.aoa_to_sheet(all);
-            var range=XLSX.utils.decode_range(ws['!ref']);
+        function renderResults() {
+            const tbody = document.getElementById('resultsBody');
+            let html = '';
+            resultados.forEach((r, i) => {
+                const cls = getBucketClass(r.bucket);
+                html += `<tr>
+                    <td>${i + 1}</td>
+                    <td>${r.tracking_id}</td>
+                    <td>${r.node}</td>
+                    <td>${r.classificacao}</td>
+                    <td>${r.cpt_status}</td>
+                    <td><span class="bucket-tag ${cls}">${r.bucket}</span></td>
+                    <td>${r.subBucket}</td>
+                    <td>${r.pudo ? '✅' : '—'}</td>
+                    <td>${r.regra}</td>
+                </tr>`;
+            });
+            tbody.innerHTML = html;
+        }
 
-            var bucketColIdx=9;
-            var subColIdx=10;
+        function renderStats() {
+            const total = resultados.length;
+            const bucketCounts = {};
+            const pudoCount = resultados.filter(r => r.pudo).length;
 
-            for(var R=range.s.r;R<=range.e.r;R++){
-                for(var C=range.s.c;C<=range.e.c;C++){
-                    var addr=XLSX.utils.encode_cell({r:R,c:C});
-                    if(!ws[addr]) ws[addr]={v:'',t:'s'};
-                    if(R===0){
-                        ws[addr].s=HEADER_STYLE;
-                    } else {
-                        var isBucketCol=(C===bucketColIdx);
-                        var isSubCol=(C===subColIdx);
-                        var cellVal=String(ws[addr].v||'').trim();
-                        if(isBucketCol && cellVal && BUCKET_COLORS.hasOwnProperty(cellVal)){
-                            ws[addr].s={fill:{fgColor:{rgb:BUCKET_COLORS[cellVal]}},font:{color:{rgb:"000000"},bold:true}};
-                        } else if(isSubCol && cellVal && SUB_COLORS.hasOwnProperty(cellVal)){
-                            ws[addr].s={fill:{fgColor:{rgb:SUB_COLORS[cellVal]}},font:{color:{rgb:"000000"},bold:true}};
-                        } else {
-                            ws[addr].s=(R%2===1)?BAND_STYLE:PLAIN_STYLE;
-                        }
-                    }
-                }
-            }
+            resultados.forEach(r => {
+                bucketCounts[r.bucket] = (bucketCounts[r.bucket] || 0) + 1;
+            });
 
-            ws['!cols']=[
-                {wch:16},{wch:55},{wch:8},{wch:22},{wch:22},{wch:22},{wch:22},
-                {wch:14},{wch:12},{wch:38},{wch:30},{wch:25}
-            ];
+            const sorted = Object.entries(bucketCounts).sort((a, b) => b[1] - a[1]);
 
-            var wb=XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb,ws,'Gestao EAD');
-            XLSX.writeFile(wb,'gestao_ead_classificado.xlsx');
-        };
-    })();
+            let html = `<div class="stat-card"><div class="label">Total Processados</div><div class="value">${total}</div></div>`;
+            html += `<div class="stat-card"><div class="label">PUDO Identificados</div><div class="value">${pudoCount}</div></div>`;
+
+            sorted.slice(0, 4).forEach(([bucket, count]) => {
+                const pct = ((count / total) * 100).toFixed(1);
+                html += `<div class="stat-card"><div class="label">${bucket}</div><div class="value">${count} <span style="font-size:12px;color:#666">(${pct}%)</span></div></div>`;
+            });
+
+            document.getElementById('statsArea').innerHTML = html;
+        }
+
+        // ─────────────────────────────────────────────────────────────────
+        // EXPORTAÇÃO
+        // ─────────────────────────────────────────────────────────────────
+        function exportCSV() {
+            if (resultados.length === 0) { alert('Processe os dados primeiro!'); return; }
+            const headers = ['tracking_id', 'route', 'node', 'estimated_arrival', 'expected_pickup', 'event_201', 'event_202', 'event_103', 'event_216', 'event_105', 'Classificação', 'CPT Status', 'Obs', 'Bucket', 'Sub-Bucket', 'PUDO', 'Regra'];
+            let csv = headers.join(',') + '
+';
+            resultados.forEach(r => {
+                csv += `${r.tracking_id},${r.route},${r.node},${r.estimated_arrival},${r.expected_pickup},${r.event_201},${r.event_202},${r.event_103},${r.event_216},${r.event_105},${r.classificacao},${r.cpt_status},"${r.obs}",${r.bucket},${r.subBucket},${r.pudo ? 'SIM' : 'NAO'},${r.regra}
+`;
+            });
+            downloadFile(csv, 'gestao_ead_classificado.csv', 'text/csv');
+        }
+
+        function exportTSV() {
+            if (resultados.length === 0) { alert('Processe os dados primeiro!'); return; }
+            const headers = ['tracking_id', 'route', 'node', 'estimated_arrival', 'expected_pickup', 'event_201', 'event_202', 'event_103', 'event_216', 'event_105', 'Classificação', 'CPT Status', 'Obs', 'Bucket', 'Sub-Bucket', 'PUDO', 'Regra'];
+            let tsv = headers.join('\t') + '
+';
+            resultados.forEach(r => {
+                tsv += `${r.tracking_id}\t${r.route}\t${r.node}\t${r.estimated_arrival}\t${r.expected_pickup}\t${r.event_201}\t${r.event_202}\t${r.event_103}\t${r.event_216}\t${r.event_105}\t${r.classificacao}\t${r.cpt_status}\t${r.obs}\t${r.bucket}\t${r.subBucket}\t${r.pudo ? 'SIM' : 'NAO'}\t${r.regra}
+`;
+            });
+            downloadFile(tsv, 'gestao_ead_classificado.tsv', 'text/tab-separated-values');
+        }
+
+        function downloadFile(content, filename, mimeType) {
+            const blob = new Blob(['\ufeff' + content], { type: mimeType + ';charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function clearAll() {
+            document.getElementById('inputData').value = '';
+            document.getElementById('resultsBody').innerHTML = '';
+            document.getElementById('statsArea').innerHTML = '';
+            resultados = [];
+        }
     </script>
 </body>
 </html>
