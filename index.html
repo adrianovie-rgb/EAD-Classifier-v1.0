@@ -140,45 +140,45 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
     <script>
     (function(){
-        // ===== PN NODES (hardcoded - ajuste aqui se precisar) =====
         var PN_NODES = ['EVE8','EIJ8','EME8','EJO8','EUM8','EMR8'];
 
-        // ===== SUB-BUCKET MAPPING =====
-        var SUB_MAP = {};
-        SUB_MAP['Perda de CPT'] = 'Erro Operacional';
-        SUB_MAP['APP finalizado e não processado (UTR)'] = 'SPC deixou pacote no piso';
-        SUB_MAP['APP finalizado e não processado (MNR)'] = 'Atraso DA';
-        SUB_MAP['Atraso na chegada no SPC (PUDO)'] = 'PUDO';
-        SUB_MAP['Atraso na chegada no SPC'] = 'Atraso DA';
-        SUB_MAP['MNR - OTR last bip'] = 'Atraso DA';
-        SUB_MAP['MNR - UTR last bip'] = 'Erro Operacional';
-        SUB_MAP['MNR - PUDO last bip'] = 'PUDO';
-        SUB_MAP['Missort'] = 'Missort';
-        SUB_MAP['Erro Stow'] = 'Erro Operacional';
-        SUB_MAP['Erro Departure'] = '';
-        SUB_MAP['Reslammed'] = '';
+        var SUB_MAP = {
+            'Perda de CPT': 'Erro Operacional',
+            'APP finalizado e não processado (UTR)': 'SPC deixou pacote no piso',
+            'APP finalizado e não processado (MNR)': 'Atraso DA',
+            'Atraso na chegada no SPC (PUDO)': 'PUDO',
+            'Atraso na chegada no SPC': 'Atraso DA',
+            'MNR - OTR last bip': 'Atraso DA',
+            'MNR - UTR last bip': 'Erro Operacional',
+            'MNR - PUDO last bip': 'PUDO',
+            'Missort': 'Missort',
+            'Erro Stow': 'Erro Operacional',
+            'Erro Departure': '',
+            'Reslammed': ''
+        };
 
-        // ===== BUCKET COLORS FOR EXCEL =====
-        var BUCKET_COLORS = {};
-        BUCKET_COLORS['Atraso na chegada no SPC'] = 'FFC000';
-        BUCKET_COLORS['APP finalizado e não processado'] = 'FF66FF';
-        BUCKET_COLORS['Perda de CPT'] = 'E6CCFF';
-        BUCKET_COLORS['Erro Departure'] = '556B2F';
-        BUCKET_COLORS['Erro Stow'] = '4472C4';
-        BUCKET_COLORS['MNR - OTR last bip'] = 'FF7F7F';
-        BUCKET_COLORS['MNR - UTR last bip'] = 'C6EFCE';
-        BUCKET_COLORS['MNR - PUDO last bip'] = 'BDD7EE';
-        BUCKET_COLORS['Reslammed'] = '808000';
-        BUCKET_COLORS['Missort'] = '92D050';
+        var BUCKET_COLORS = {
+            'Atraso na chegada no SPC': 'FFC000',
+            'APP finalizado e não processado': 'FF66FF',
+            'Perda de CPT': 'E6CCFF',
+            'Erro Departure': '556B2F',
+            'Erro Stow': '4472C4',
+            'MNR - OTR last bip': 'FF7F7F',
+            'MNR - UTR last bip': 'C6EFCE',
+            'MNR - PUDO last bip': 'BDD7EE',
+            'Reslammed': '808000',
+            'Missort': '92D050'
+        };
 
-        var SUB_COLORS = {};
-        SUB_COLORS['SPC deixou pacote no piso'] = 'FFFF00';
-        SUB_COLORS['Atraso DA'] = 'FFA500';
-        SUB_COLORS['Erro Operacional'] = '008000';
-        SUB_COLORS['PUDO'] = 'BDD7EE';
-        SUB_COLORS['Missort'] = 'C0C0C0';
-        SUB_COLORS['Falha Gestão'] = 'E6CCFF';
-        SUB_COLORS['Problema MM'] = 'FF0000';
+        var SUB_COLORS = {
+            'SPC deixou pacote no piso': 'FFFF00',
+            'Atraso DA': 'FFA500',
+            'Erro Operacional': '008000',
+            'PUDO': 'BDD7EE',
+            'Missort': 'C0C0C0',
+            'Falha Gestão': 'E6CCFF',
+            'Problema MM': 'FF0000'
+        };
 
         var HEADER_STYLE = {
             font: { bold: true, color: { rgb: "FFFFFF" } },
@@ -315,20 +315,22 @@
             reader.onload=function(ev){
                 try{
                     var wb=XLSX.read(ev.target.result,{type:'array',cellDates:false});
-                    var sheet=wb.Sheets[wb.SheetNames];
+                    var sheetName=wb.SheetNames;
+                    var sheet=wb.Sheets[sheetName];
                     var raw=XLSX.utils.sheet_to_json(sheet,{header:1,raw:true,defval:''});
                     if(raw.length<2) throw new Error('Arquivo vazio');
 
                     var headers=raw;
                     var h={};
                     for(var i=0;i<headers.length;i++){
-                        h[String(headers[i]).trim().toLowerCase().replace(/\s+/g,'_')]=i;
+                        var colName=String(headers[i]).trim().toLowerCase().replace(/\s+/g,'_');
+                        h[colName]=i;
                     }
 
-                    if(h['tracking_id']===undefined) throw new Error('Coluna tracking_id não encontrada. Colunas disponíveis: '+headers.join(', '));
-                    if(h['status_event']===undefined) throw new Error('Coluna status_event não encontrada');
-                    if(h['status_date']===undefined) throw new Error('Coluna status_date não encontrada');
-                    if(h['status_node_id']===undefined) throw new Error('Coluna status_node_id não encontrada');
+                    if(h['tracking_id']===undefined) throw new Error('Coluna tracking_id não encontrada. Colunas: '+headers.join(', '));
+                    if(h['status_event']===undefined) throw new Error('Coluna status_event não encontrada. Colunas: '+headers.join(', '));
+                    if(h['status_date']===undefined) throw new Error('Coluna status_date não encontrada. Colunas: '+headers.join(', '));
+                    if(h['status_node_id']===undefined) throw new Error('Coluna status_node_id não encontrada. Colunas: '+headers.join(', '));
 
                     var ti=h['tracking_id'], ei=h['status_event'], di=h['status_date'], ni=h['status_node_id'];
 
@@ -417,8 +419,8 @@
                             }
                         }
                         if(!dateEAD && date103){
-                            dateEAD = new Date(date103.getFullYear(), date103.getMonth(), date103.getDate()+1, 0, 0, 0);
-                            estArrival = formatDT(dateEAD);
+                            dateEAD=new Date(date103.getFullYear(), date103.getMonth(), date103.getDate()+1, 0, 0, 0);
+                            estArrival=formatDT(dateEAD);
                         }
 
                         var result=classifyTracking({
