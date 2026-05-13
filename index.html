@@ -69,14 +69,14 @@
         <h3 style="margin-top:10px;">&#x1F7E1; Regras UTR Error (tem 201 no SPC):</h3>
         <ul>
             <li>Perda de CPT: 103 e 201 mesmo dia, 202 em dia diferente OU 202 &gt; EAD</li>
-            <li>Atraso na chegada no SPC: 201 em dia diferente do 103, 202 &le; EAD</li>
+            <li>Atraso na chegada no SPC: 201 em dia diferente do 103</li>
             <li>APP finalizado e não processado: 103 e 216 mesmo dia, 201 em dia diferente</li>
             <li>Erro Departure: 103 e 201 mesmo dia, sem 202</li>
             <li>Erro Stow: sem 201 no SPC, mas tem 202 no SPC</li>
         </ul>
         <h3 style="margin-top:10px;">&#x1F7E3; Regras MNR (sem 201 e sem 202 no SPC):</h3>
         <ul>
-            <li>APP finalizado e não processado: tem 216 no SPC (pacote voltou sem processar)</li>
+            <li>APP finalizado e não processado: tem 216 no SPC</li>
             <li>MNR - PUDO last bip: tem EVENT_105 na rota</li>
             <li>MNR - UTR last bip: Route passa por node PN</li>
             <li>MNR - OTR last bip: Demais casos</li>
@@ -141,6 +141,7 @@
     <script>
     (function(){
         var PN_NODES = ['EVE8','EIJ8','EME8','EJO8','EUM8','EMR8'];
+        var FIRST_IDX = 0;
 
         var SUB_MAP = {
             'Perda de CPT': 'Erro Operacional',
@@ -175,9 +176,7 @@
             'Atraso DA': 'FFA500',
             'Erro Operacional': '008000',
             'PUDO': 'BDD7EE',
-            'Missort': 'C0C0C0',
-            'Falha Gestão': 'E6CCFF',
-            'Problema MM': 'FF0000'
+            'Missort': 'C0C0C0'
         };
 
         var HEADER_STYLE = {
@@ -315,22 +314,22 @@
             reader.onload=function(ev){
                 try{
                     var wb=XLSX.read(ev.target.result,{type:'array',cellDates:false});
-                    var sheetName=wb.SheetNames;
-                    var sheet=wb.Sheets[sheetName];
+                    var firstSheetName=wb.SheetNames[FIRST_IDX];
+                    var sheet=wb.Sheets[firstSheetName];
                     var raw=XLSX.utils.sheet_to_json(sheet,{header:1,raw:true,defval:''});
                     if(raw.length<2) throw new Error('Arquivo vazio');
 
-                    var headers=raw;
+                    var headers=raw[FIRST_IDX];
                     var h={};
                     for(var i=0;i<headers.length;i++){
                         var colName=String(headers[i]).trim().toLowerCase().replace(/\s+/g,'_');
                         h[colName]=i;
                     }
 
-                    if(h['tracking_id']===undefined) throw new Error('Coluna tracking_id não encontrada. Colunas: '+headers.join(', '));
-                    if(h['status_event']===undefined) throw new Error('Coluna status_event não encontrada. Colunas: '+headers.join(', '));
-                    if(h['status_date']===undefined) throw new Error('Coluna status_date não encontrada. Colunas: '+headers.join(', '));
-                    if(h['status_node_id']===undefined) throw new Error('Coluna status_node_id não encontrada. Colunas: '+headers.join(', '));
+                    if(h['tracking_id']===undefined) throw new Error('Coluna tracking_id nao encontrada. Colunas: '+headers.join(', '));
+                    if(h['status_event']===undefined) throw new Error('Coluna status_event nao encontrada. Colunas: '+headers.join(', '));
+                    if(h['status_date']===undefined) throw new Error('Coluna status_date nao encontrada. Colunas: '+headers.join(', '));
+                    if(h['status_node_id']===undefined) throw new Error('Coluna status_node_id nao encontrada. Colunas: '+headers.join(', '));
 
                     var ti=h['tracking_id'], ei=h['status_event'], di=h['status_date'], ni=h['status_node_id'];
 
@@ -530,7 +529,7 @@
             ];
 
             var wb=XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb,ws,'Gestão EAD');
+            XLSX.utils.book_append_sheet(wb,ws,'Gestao EAD');
             XLSX.writeFile(wb,'gestao_ead_classificado.xlsx');
         };
     })();
