@@ -4,19 +4,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EAD Classifier v3.0</title>
+    <title>EAD Classifier v4.1</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #1a1a2e; color: #e0e0e0; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 20px; }
         .header { text-align: center; margin-bottom: 20px; }
         .header h1 { font-size: 2em; color: #00d4ff; margin-bottom: 5px; }
         .header p { color: #888; font-size: 0.85em; }
-        .rules-info { background: #16213e; border: 1px solid #0f3460; border-radius: 8px; padding: 12px 18px; margin-bottom: 20px; max-width: 750px; width: 100%; }
+        .header .version-tag { display: inline-block; background: #6366f1; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 0.7em; margin-top: 4px; }
+        .rules-info { background: #16213e; border: 1px solid #0f3460; border-radius: 8px; padding: 12px 18px; margin-bottom: 20px; max-width: 800px; width: 100%; }
         .rules-info h3 { color: #00d4ff; font-size: 0.9em; margin-bottom: 8px; }
         .rules-info ul { list-style: none; padding: 0; }
         .rules-info li { padding: 3px 0; font-size: 0.8em; color: #ccc; }
         .rules-info .sub { margin-left: 20px; font-size: 0.75em; color: #999; }
-        .container { background: #16213e; border-radius: 12px; padding: 30px; max-width: 750px; width: 100%; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+        .rules-info .new-tag { background: #22c55e; color: #000; padding: 1px 5px; border-radius: 3px; font-size: 0.7em; font-weight: bold; margin-left: 4px; }
+        .rules-info .fix-tag { background: #f59e0b; color: #000; padding: 1px 5px; border-radius: 3px; font-size: 0.7em; font-weight: bold; margin-left: 4px; }
+        .container { background: #16213e; border-radius: 12px; padding: 30px; max-width: 800px; width: 100%; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
         .section { margin-bottom: 25px; }
         .section-title { font-size: 1em; color: #00d4ff; margin-bottom: 12px; font-weight: 600; }
         .drop-zone { border: 2px dashed #0f3460; border-radius: 8px; padding: 40px 20px; text-align: center; cursor: pointer; transition: all 0.3s; }
@@ -25,12 +28,13 @@
         .drop-zone .icon { font-size: 2em; }
         #fileInput { display: none; }
         .results { display: none; }
-        .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 15px; }
+        .stat-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 15px; }
         .stat-box { background: #0f3460; border-radius: 8px; padding: 12px; text-align: center; }
-        .stat-box .value { font-size: 1.4em; font-weight: bold; color: #00d4ff; }
-        .stat-box .label { font-size: 0.7em; color: #888; margin-top: 4px; }
+        .stat-box .value { font-size: 1.3em; font-weight: bold; color: #00d4ff; }
+        .stat-box .label { font-size: 0.65em; color: #888; margin-top: 4px; }
         .stat-box.utr .value { color: #fbbf24; }
         .stat-box.mnr .value { color: #a78bfa; }
+        .stat-box.perda .value { color: #f87171; }
         .stat-box.blank .value { color: #94a3b8; }
         .bucket-table { width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 0.78em; }
         .bucket-table th { text-align: left; color: #00d4ff; padding: 6px 8px; border-bottom: 1px solid #0f3460; font-weight: 500; }
@@ -54,35 +58,44 @@
 </head>
 <body>
     <div class="header">
-        <h1>EAD Classifier v3.0</h1>
-        <p>Entrada: OBLT | Saida: Modelo Gestao EAD com Bucket e Sub-Bucket</p>
+        <h1>EAD Classifier v4.1</h1>
+        <p>Entrada: OBLT | Saída: Modelo Gestão EAD com Bucket e Sub-Bucket</p>
+        <span class="version-tag">PUDO = EVENT_105 | Alinhado com referência manual</span>
     </div>
     <div class="rules-info">
-        <h3>Regras Prioritarias:</h3>
+        <h3>&#x1F7E2; Regras Prioritárias:</h3>
         <ul>
             <li>&#x1F534; EVENT_238 presente &rarr; Bucket: Reslammed</li>
             <li>&#x1F534; EVENT_414 presente &rarr; Bucket: Missort</li>
         </ul>
-        <h3 style="margin-top:10px;">Regras UTR Error (tem 201 no SPC):</h3>
+        <h3 style="margin-top:10px;">&#x1F7E1; Regras UTR Error (tem 201 no SPC):</h3>
         <ul>
-            <li>Atraso chegada no SPC: 103 no dia correto, sem 216, 201 em dia diferente</li>
-            <li>APP finalizado nao processado: 103 e 216 no dia correto, 201 em dia diferente</li>
-            <li>Atraso processamento - perda de CPT: 103 e 201 mesmo dia, 202 em dia diferente</li>
-            <li>Erro de Departure: 103 e 201 mesmo dia, sem 202</li>
-            <li>Erro de Stow: sem 201 no SPC, mas tem 202 no SPC</li>
+            <li>Perda de CPT: 103 e 201 mesmo dia, 202 em dia diferente OU 202 &gt; EAD</li>
+            <li>Atraso na chegada no SPC: 201 em dia diferente do 103, 202 &le; EAD</li>
+            <li>APP finalizado e não processado: 103 e 216 mesmo dia, 201 em dia diferente</li>
+            <li>Erro Departure: 103 e 201 mesmo dia, sem 202</li>
+            <li>Erro Stow: sem 201 no SPC, mas tem 202 no SPC</li>
         </ul>
-        <h3 style="margin-top:10px;">Regras MNR (sem 201 e sem 202 no SPC):</h3>
+        <h3 style="margin-top:10px;">&#x1F7E3; Regras MNR (sem 201 e sem 202 no SPC):</h3>
         <ul>
+            <li>APP finalizado e não processado: tem 216 no SPC (pacote voltou sem processar)</li>
+            <li>MNR - PUDO last bip: tem EVENT_105 na rota</li>
             <li>MNR - UTR last bip: Route passa por node PN</li>
             <li>MNR - OTR last bip: Demais casos</li>
         </ul>
-        <h3 style="margin-top:10px;">Sub-Bucket automatico:</h3>
+        <h3 style="margin-top:10px;">&#x1F4CB; Sub-Bucket automático:</h3>
         <ul>
-            <li class="sub">APP finalizado &rarr; SPC deixou pacote no piso</li>
+            <li class="sub">Perda de CPT &rarr; Erro Operacional</li>
+            <li class="sub">APP finalizado (com 201) &rarr; SPC deixou pacote no piso</li>
+            <li class="sub">APP finalizado (sem 201/MNR) &rarr; Atraso DA</li>
+            <li class="sub">Atraso na chegada (tem EVENT_105) &rarr; PUDO</li>
+            <li class="sub">Atraso na chegada (sem EVENT_105) &rarr; Atraso DA</li>
             <li class="sub">MNR - OTR last bip &rarr; Atraso DA</li>
-            <li class="sub">MNR - UTR last bip &rarr; Erro operacional</li>
+            <li class="sub">MNR - UTR last bip &rarr; Erro Operacional</li>
+            <li class="sub">MNR - PUDO last bip &rarr; PUDO</li>
             <li class="sub">Missort &rarr; Missort</li>
-            <li class="sub">Demais: em branco (avaliacao manual)</li>
+            <li class="sub">Erro Stow &rarr; Erro Operacional</li>
+            <li class="sub">Demais: em branco (avaliação manual)</li>
         </ul>
     </div>
     <div class="container">
@@ -106,6 +119,7 @@
                 <div class="stat-box"><div class="value" id="totalRows">0</div><div class="label">Total trackings</div></div>
                 <div class="stat-box utr"><div class="value" id="utrTotal">0</div><div class="label">UTR Error</div></div>
                 <div class="stat-box mnr"><div class="value" id="mnrTotal">0</div><div class="label">MNR</div></div>
+                <div class="stat-box perda"><div class="value" id="perdaTotal">0</div><div class="label">Perda de CPT</div></div>
                 <div class="stat-box blank"><div class="value" id="blankTotal">0</div><div class="label">Em branco</div></div>
             </div>
             <table class="bucket-table" id="bucketTable">
@@ -113,45 +127,60 @@
                 <tbody id="bucketBody"></tbody>
             </table>
             <hr class="separator">
+            <table class="bucket-table" id="subTable">
+                <thead><tr><th>Sub-Bucket</th><th>Qtd</th><th>%</th></tr></thead>
+                <tbody id="subBody"></tbody>
+            </table>
+            <hr class="separator">
             <div class="section-title">3. Download</div>
             <div class="buttons">
-                <button class="btn btn-class" onclick="downloadResult()">&#x1F4CA; Download Gestao EAD (.xlsx)</button>
+                <button class="btn btn-class" onclick="downloadResult()">&#x1F4CA; Download Gestão EAD (.xlsx)</button>
             </div>
         </div>
     </div>
-    <div class="version">EAD Classifier v3.0 | Entrada OBLT &rarr; Saida Gestao EAD</div>
+    <div class="version">EAD Classifier v4.1 | PUDO = EVENT_105 | PN nodes hardcoded</div>
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
     <script>
     (function(){
-        var PN_NODES = ['EVE8','EIJ8','EME8','EJO8','EUM8','EMR8','EOZ8'];
+        // ===== PN NODES (hardcoded - ajuste aqui se precisar) =====
+        var PN_NODES = ['EVE8','EIJ8','EME8','EJO8','EUM8','EMR8'];
 
+        // ===== SUB-BUCKET MAPPING =====
         var SUB_MAP = {};
-        SUB_MAP['APP finalizado nao processado'] = 'SPC deixou pacote no piso';
+        SUB_MAP['Perda de CPT'] = 'Erro Operacional';
+        SUB_MAP['APP finalizado e não processado (UTR)'] = 'SPC deixou pacote no piso';
+        SUB_MAP['APP finalizado e não processado (MNR)'] = 'Atraso DA';
+        SUB_MAP['Atraso na chegada no SPC (PUDO)'] = 'PUDO';
+        SUB_MAP['Atraso na chegada no SPC'] = 'Atraso DA';
         SUB_MAP['MNR - OTR last bip'] = 'Atraso DA';
-        SUB_MAP['MNR - UTR last bip'] = 'Erro operacional';
+        SUB_MAP['MNR - UTR last bip'] = 'Erro Operacional';
+        SUB_MAP['MNR - PUDO last bip'] = 'PUDO';
         SUB_MAP['Missort'] = 'Missort';
+        SUB_MAP['Erro Stow'] = 'Erro Operacional';
+        SUB_MAP['Erro Departure'] = '';
+        SUB_MAP['Reslammed'] = '';
 
+        // ===== BUCKET COLORS FOR EXCEL =====
         var BUCKET_COLORS = {};
-        BUCKET_COLORS['Atraso chegada no SPC'] = 'FFC000';
-        BUCKET_COLORS['APP finalizado nao processado'] = 'FF66FF';
-        BUCKET_COLORS['Atraso processamento - perda de CPT'] = 'E6CCFF';
-        BUCKET_COLORS['Erro de Departure'] = '556B2F';
-        BUCKET_COLORS['Erro de Stow'] = '4472C4';
+        BUCKET_COLORS['Atraso na chegada no SPC'] = 'FFC000';
+        BUCKET_COLORS['APP finalizado e não processado'] = 'FF66FF';
+        BUCKET_COLORS['Perda de CPT'] = 'E6CCFF';
+        BUCKET_COLORS['Erro Departure'] = '556B2F';
+        BUCKET_COLORS['Erro Stow'] = '4472C4';
         BUCKET_COLORS['MNR - OTR last bip'] = 'FF7F7F';
         BUCKET_COLORS['MNR - UTR last bip'] = 'C6EFCE';
+        BUCKET_COLORS['MNR - PUDO last bip'] = 'BDD7EE';
         BUCKET_COLORS['Reslammed'] = '808000';
         BUCKET_COLORS['Missort'] = '92D050';
 
         var SUB_COLORS = {};
         SUB_COLORS['SPC deixou pacote no piso'] = 'FFFF00';
         SUB_COLORS['Atraso DA'] = 'FFA500';
-        SUB_COLORS['Erro operacional'] = '008000';
+        SUB_COLORS['Erro Operacional'] = '008000';
+        SUB_COLORS['PUDO'] = 'BDD7EE';
         SUB_COLORS['Missort'] = 'C0C0C0';
-        SUB_COLORS['Falha Gestao'] = 'E6CCFF';
-        SUB_COLORS['Falta de energia'] = 'FF0000';
-        SUB_COLORS['Absenteismo'] = 'FFA500';
-        SUB_COLORS['Atraso chegada dos pacotes do PN'] = 'BDD7EE';
-        SUB_COLORS['Forecast deviation'] = 'D9E2F3';
+        SUB_COLORS['Falha Gestão'] = 'E6CCFF';
+        SUB_COLORS['Problema MM'] = 'FF0000';
 
         var HEADER_STYLE = {
             font: { bold: true, color: { rgb: "FFFFFF" } },
@@ -162,7 +191,7 @@
         var PLAIN_STYLE = { fill: { fgColor: { rgb: "FFFFFF" } }, font: { color: { rgb: "000000" } } };
 
         var gOutputData = [];
-        var OUTPUT_HEADERS = ['tracking id','route','node','estimated_arrival_datetime_brt','expected_pickup_datetime_brt','arrived_or_event_201_brt','departure_or_event_202_brt','Classificacao','CPT Status','Bucket','Sub-Bucket','Obs'];
+        var OUTPUT_HEADERS = ['tracking id','route','node','estimated_arrival_datetime_brt','expected_pickup_datetime_brt','arrived_or_event_201_brt','departure_or_event_202_brt','Classificação','CPT Status','Bucket','Sub-Bucket','Obs'];
 
         function parseDate(val){
             if(!val) return null;
@@ -190,7 +219,7 @@
             return false;
         }
 
-        function buildRoute(events, spcNode){
+        function buildRoute(events){
             var visited = [];
             var seen = {};
             events.sort(function(a,b){ return (a.date||0) - (b.date||0); });
@@ -209,59 +238,74 @@
         }
 
         function classifyTracking(info){
-            // Priority rules
-            if(info.has238) return {bucket:'Reslammed', classificacao:'UTR Error', cptStatus:'Stow Miss'};
-            if(info.has414) return {bucket:'Missort', classificacao:'UTR Error', cptStatus:'Stow Miss'};
+            // ===== PRIORITY RULES =====
+            if(info.has238) return {bucket:'Reslammed', classificacao:'UTR Error', cptStatus:'Stow Miss', subKey:'Reslammed'};
+            if(info.has414) return {bucket:'Missort', classificacao:'UTR Error', cptStatus:'Stow Miss', subKey:'Missort'};
 
             var d103 = dateOnly(info.date103);
             var d201 = dateOnly(info.date201spc);
             var d202 = dateOnly(info.date202spc);
             var d216 = dateOnly(info.date216spc);
 
-            // Erro de Stow: sem 201 no SPC, mas tem 202 no SPC
+            // ===== ERRO STOW: sem 201 no SPC, mas tem 202 no SPC =====
             if(!info.has201spc && info.has202spc){
-                return {bucket:'Erro de Stow', classificacao:'UTR Error', cptStatus:'Stow Miss'};
+                return {bucket:'Erro Stow', classificacao:'UTR Error', cptStatus:'Stow Miss', subKey:'Erro Stow'};
             }
 
-            // MNR: sem 201 e sem 202 no SPC
+            // ===== MNR: sem 201 e sem 202 no SPC =====
             if(!info.has201spc && !info.has202spc){
-                var bucket = '';
-                if(routeHasPN(info.allNodes)){
-                    bucket = 'MNR - UTR last bip';
-                } else {
-                    bucket = 'MNR - OTR last bip';
+                // Check if has 216 at SPC (APP finalizado mas não processado - MNR variant)
+                if(info.has216spc){
+                    return {bucket:'APP finalizado e não processado', classificacao:'MNR', cptStatus:'Stow Miss', subKey:'APP finalizado e não processado (MNR)'};
                 }
-                return {bucket:bucket, classificacao:'MNR', cptStatus:'Stow Miss'};
+                // Check PUDO: has EVENT_105
+                if(info.hasEvent105){
+                    return {bucket:'MNR - PUDO last bip', classificacao:'MNR', cptStatus:'Stow Miss', subKey:'MNR - PUDO last bip'};
+                }
+                // Check PN nodes in route
+                if(routeHasPN(info.allNodes)){
+                    return {bucket:'MNR - UTR last bip', classificacao:'MNR', cptStatus:'Stow Miss', subKey:'MNR - UTR last bip'};
+                }
+                // Default MNR
+                return {bucket:'MNR - OTR last bip', classificacao:'MNR', cptStatus:'Stow Miss', subKey:'MNR - OTR last bip'};
             }
 
-            // UTR Error: tem 201 no SPC
+            // ===== UTR Error: tem 201 no SPC =====
             if(info.has201spc){
                 var same103_201 = (d103 && d201 && d103 === d201);
-                var same103_202 = (d103 && d202 && d103 === d202);
 
                 if(same103_201){
                     if(!info.has202spc){
-                        return {bucket:'Erro de Departure', classificacao:'UTR Error', cptStatus:'CPT Miss'};
+                        return {bucket:'Erro Departure', classificacao:'UTR Error', cptStatus:'CPT Miss', subKey:'Erro Departure'};
                     }
+                    var same103_202 = (d103 && d202 && d103 === d202);
                     if(same103_202){
-                        // 103, 201 e 202 mesmo dia - caso indefinido, deixar em branco
-                        return {bucket:'', classificacao:'UTR Error', cptStatus:'Stow Miss'};
+                        // 103, 201 and 202 same day - check if 202 > EAD (Perda de CPT by time)
+                        if(info.dateEAD && info.date202spc && info.date202spc > info.dateEAD){
+                            return {bucket:'Perda de CPT', classificacao:'UTR Error', cptStatus:'CPT Miss', subKey:'Perda de CPT'};
+                        }
+                        // All same day and within CPT - undefined
+                        return {bucket:'', classificacao:'UTR Error', cptStatus:'Stow Miss', subKey:''};
                     }
-                    // 103 e 201 mesmo dia, 202 dia diferente
-                    return {bucket:'Atraso processamento - perda de CPT', classificacao:'UTR Error', cptStatus:'CPT Miss'};
+                    // 103 e 201 mesmo dia, 202 dia diferente -> Perda de CPT
+                    return {bucket:'Perda de CPT', classificacao:'UTR Error', cptStatus:'CPT Miss', subKey:'Perda de CPT'};
                 } else {
                     // 201 em dia diferente do 103
+                    // Check if has 216 on same day as 103 (APP finalizado)
                     if(d103 && d216 && d103 === d216){
-                        // Teve 216 no dia do 103 (APP finalizado pelo driver)
-                        return {bucket:'APP finalizado nao processado', classificacao:'UTR Error', cptStatus:'Stow Miss'};
+                        return {bucket:'APP finalizado e não processado', classificacao:'UTR Error', cptStatus:'Stow Miss', subKey:'APP finalizado e não processado (UTR)'};
                     }
-                    // Sem 216 no dia do 103 - atraso na chegada
-                    return {bucket:'Atraso chegada no SPC', classificacao:'UTR Error', cptStatus:'Stow Miss'};
+
+                    // Atraso na chegada no SPC - with PUDO sub-bucket check via EVENT_105
+                    if(info.hasEvent105){
+                        return {bucket:'Atraso na chegada no SPC', classificacao:'UTR Error', cptStatus:'Stow Miss', subKey:'Atraso na chegada no SPC (PUDO)'};
+                    }
+                    return {bucket:'Atraso na chegada no SPC', classificacao:'UTR Error', cptStatus:'Stow Miss', subKey:'Atraso na chegada no SPC'};
                 }
             }
 
-            // Caso indefinido - em branco para avaliacao manual
-            return {bucket:'', classificacao:'', cptStatus:''};
+            // Undefined - manual evaluation
+            return {bucket:'', classificacao:'', cptStatus:'', subKey:''};
         }
 
         var dropZone=document.getElementById('dropZone');
@@ -289,20 +333,20 @@
             reader.onload=function(ev){
                 try{
                     var wb=XLSX.read(ev.target.result,{type:'array',cellDates:false});
-                    var sheet=wb.Sheets[wb.SheetNames[0]];
+                    var sheet=wb.Sheets[wb.SheetNames];
                     var raw=XLSX.utils.sheet_to_json(sheet,{header:1,raw:true,defval:''});
                     if(raw.length<2) throw new Error('Arquivo vazio');
 
-                    var headers=raw[0];
+                    var headers=raw;
                     var h={};
                     for(var i=0;i<headers.length;i++){
                         h[String(headers[i]).trim().toLowerCase()]=i;
                     }
 
-                    if(h['tracking_id']===undefined) throw new Error('Coluna tracking_id nao encontrada');
-                    if(h['status_event']===undefined) throw new Error('Coluna status_event nao encontrada');
-                    if(h['status_date']===undefined) throw new Error('Coluna status_date nao encontrada');
-                    if(h['status_node_id']===undefined) throw new Error('Coluna status_node_id nao encontrada');
+                    if(h['tracking_id']===undefined) throw new Error('Coluna tracking_id não encontrada');
+                    if(h['status_event']===undefined) throw new Error('Coluna status_event não encontrada');
+                    if(h['status_date']===undefined) throw new Error('Coluna status_date não encontrada');
+                    if(h['status_node_id']===undefined) throw new Error('Coluna status_node_id não encontrada');
 
                     var ti=h['tracking_id'], ei=h['status_event'], di=h['status_date'], ni=h['status_node_id'];
 
@@ -331,8 +375,9 @@
 
                     // Process each tracking
                     gOutputData=[];
-                    var utrC=0, mnrC=0, blankC=0;
+                    var utrC=0, mnrC=0, blankC=0, perdaC=0;
                     var bCounts={};
+                    var sCounts={};
 
                     var tids=Object.keys(trackings);
                     for(var t=0;t<tids.length;t++){
@@ -351,9 +396,11 @@
 
                         // Find EVENT_216 at SPC node
                         var date216spc=null;
+                        var has216spc=false;
                         for(var j=0;j<evts.length;j++){
                             if(evts[j].event==='EVENT_216' && evts[j].node===spcNode){
                                 date216spc=evts[j].date;
+                                has216spc=true;
                                 break;
                             }
                         }
@@ -380,11 +427,12 @@
                             }
                         }
 
-                        // Check EVENT_238 and EVENT_414
-                        var has238=false, has414=false;
+                        // Check EVENT_238, EVENT_414, EVENT_105
+                        var has238=false, has414=false, hasEvent105=false;
                         for(var j=0;j<evts.length;j++){
                             if(evts[j].event==='EVENT_238') has238=true;
                             if(evts[j].event==='EVENT_414') has414=true;
+                            if(evts[j].event==='EVENT_105') hasEvent105=true;
                         }
 
                         // Get all unique nodes
@@ -396,43 +444,57 @@
                         }
 
                         // Build route
-                        var route=buildRoute(evts, spcNode);
+                        var route=buildRoute(evts);
 
-                        // Find estimated arrival (EAD)
+                        // Find EAD (estimated arrival datetime) - EVENT_301 or EVENT_302
+                        var dateEAD=null;
                         var estArrival='';
                         for(var j=0;j<evts.length;j++){
                             if(evts[j].event==='EVENT_301'||evts[j].event==='EVENT_302'){
+                                dateEAD=evts[j].date;
                                 estArrival=formatDT(evts[j].date);
                                 break;
                             }
+                        }
+                        // Fallback: use 103 date + 1 day at midnight as EAD reference
+                        if(!dateEAD && date103){
+                            dateEAD = new Date(date103.getFullYear(), date103.getMonth(), date103.getDate()+1, 0, 0, 0);
+                            estArrival = formatDT(dateEAD);
                         }
 
                         // Classify
                         var result=classifyTracking({
                             has238:has238,
                             has414:has414,
+                            hasEvent105:hasEvent105,
                             spcNode:spcNode,
                             date103:date103,
                             date216spc:date216spc,
+                            has216spc:has216spc,
                             date201spc:date201spc,
                             date202spc:date202spc,
                             has201spc:has201spc,
                             has202spc:has202spc,
-                            allNodes:allNodes
+                            allNodes:allNodes,
+                            dateEAD:dateEAD
                         });
 
                         var bucket=result.bucket;
                         var classificacao=result.classificacao;
                         var cptStatus=result.cptStatus;
-                        var subBucket=SUB_MAP.hasOwnProperty(bucket)?SUB_MAP[bucket]:'';
+                        var subKey=result.subKey;
+                        var subBucket=SUB_MAP.hasOwnProperty(subKey)?SUB_MAP[subKey]:'';
 
                         if(classificacao==='UTR Error') utrC++;
                         else if(classificacao==='MNR') mnrC++;
-
+                        if(bucket==='Perda de CPT') perdaC++;
                         if(!bucket) blankC++;
 
                         var bk=bucket||'Em branco (manual)';
                         bCounts[bk]=(bCounts[bk]||0)+1;
+
+                        var sk=subBucket||'Em branco (manual)';
+                        sCounts[sk]=(sCounts[sk]||0)+1;
 
                         gOutputData.push([
                             tid,
@@ -454,8 +516,10 @@
                     document.getElementById('totalRows').textContent=total.toLocaleString('pt-BR');
                     document.getElementById('utrTotal').textContent=utrC.toLocaleString('pt-BR');
                     document.getElementById('mnrTotal').textContent=mnrC.toLocaleString('pt-BR');
+                    document.getElementById('perdaTotal').textContent=perdaC.toLocaleString('pt-BR');
                     document.getElementById('blankTotal').textContent=blankC.toLocaleString('pt-BR');
 
+                    // Bucket table
                     var entries=[];
                     for(var key in bCounts){if(bCounts.hasOwnProperty(key))entries.push({n:key,c:bCounts[key]});}
                     entries.sort(function(a,b){return b.c-a.c;});
@@ -465,6 +529,18 @@
                         bHTML+='<tr><td>'+entries[k].n+'</td><td>'+entries[k].c+'</td><td>'+pct+'%</td></tr>';
                     }
                     document.getElementById('bucketBody').innerHTML=bHTML;
+
+                    // Sub-Bucket table
+                    var sEntries=[];
+                    for(var key in sCounts){if(sCounts.hasOwnProperty(key))sEntries.push({n:key,c:sCounts[key]});}
+                    sEntries.sort(function(a,b){return b.c-a.c;});
+                    var sHTML='';
+                    for(var k=0;k<sEntries.length;k++){
+                        var pct=((sEntries[k].c/(total||1))*100).toFixed(1);
+                        sHTML+='<tr><td>'+sEntries[k].n+'</td><td>'+sEntries[k].c+'</td><td>'+pct+'%</td></tr>';
+                    }
+                    document.getElementById('subBody').innerHTML=sHTML;
+
                     document.getElementById('loading').style.display='none';
                     document.getElementById('results').style.display='block';
                 }catch(err){
@@ -512,21 +588,21 @@
 
             ws['!cols']=[
                 {wch:16},
-                {wch:50},
+                {wch:55},
                 {wch:8},
                 {wch:22},
                 {wch:22},
                 {wch:22},
                 {wch:22},
-                {wch:12},
+                {wch:14},
                 {wch:12},
                 {wch:38},
                 {wch:30},
-                {wch:20}
+                {wch:25}
             ];
 
             var wb=XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb,ws,'Gestao EAD');
+            XLSX.utils.book_append_sheet(wb,ws,'Gestão EAD');
             XLSX.writeFile(wb,'gestao_ead_classificado.xlsx');
         };
     })();
