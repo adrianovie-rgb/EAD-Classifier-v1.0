@@ -17,8 +17,6 @@
         .rules-info ul { list-style: none; padding: 0; }
         .rules-info li { padding: 3px 0; font-size: 0.8em; color: #ccc; }
         .rules-info .sub { margin-left: 20px; font-size: 0.75em; color: #999; }
-        .rules-info .new-tag { background: #22c55e; color: #000; padding: 1px 5px; border-radius: 3px; font-size: 0.7em; font-weight: bold; margin-left: 4px; }
-        .rules-info .fix-tag { background: #f59e0b; color: #000; padding: 1px 5px; border-radius: 3px; font-size: 0.7em; font-weight: bold; margin-left: 4px; }
         .container { background: #16213e; border-radius: 12px; padding: 30px; max-width: 800px; width: 100%; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
         .section { margin-bottom: 25px; }
         .section-title { font-size: 1em; color: #00d4ff; margin-bottom: 12px; font-weight: 600; }
@@ -238,7 +236,6 @@
         }
 
         function classifyTracking(info){
-            // ===== PRIORITY RULES =====
             if(info.has238) return {bucket:'Reslammed', classificacao:'UTR Error', cptStatus:'Stow Miss', subKey:'Reslammed'};
             if(info.has414) return {bucket:'Missort', classificacao:'UTR Error', cptStatus:'Stow Miss', subKey:'Missort'};
 
@@ -247,30 +244,23 @@
             var d202 = dateOnly(info.date202spc);
             var d216 = dateOnly(info.date216spc);
 
-            // ===== ERRO STOW: sem 201 no SPC, mas tem 202 no SPC =====
             if(!info.has201spc && info.has202spc){
                 return {bucket:'Erro Stow', classificacao:'UTR Error', cptStatus:'Stow Miss', subKey:'Erro Stow'};
             }
 
-            // ===== MNR: sem 201 e sem 202 no SPC =====
             if(!info.has201spc && !info.has202spc){
-                // Check if has 216 at SPC (APP finalizado mas não processado - MNR variant)
                 if(info.has216spc){
                     return {bucket:'APP finalizado e não processado', classificacao:'MNR', cptStatus:'Stow Miss', subKey:'APP finalizado e não processado (MNR)'};
                 }
-                // Check PUDO: has EVENT_105
                 if(info.hasEvent105){
                     return {bucket:'MNR - PUDO last bip', classificacao:'MNR', cptStatus:'Stow Miss', subKey:'MNR - PUDO last bip'};
                 }
-                // Check PN nodes in route
                 if(routeHasPN(info.allNodes)){
                     return {bucket:'MNR - UTR last bip', classificacao:'MNR', cptStatus:'Stow Miss', subKey:'MNR - UTR last bip'};
                 }
-                // Default MNR
                 return {bucket:'MNR - OTR last bip', classificacao:'MNR', cptStatus:'Stow Miss', subKey:'MNR - OTR last bip'};
             }
 
-            // ===== UTR Error: tem 201 no SPC =====
             if(info.has201spc){
                 var same103_201 = (d103 && d201 && d103 === d201);
 
@@ -280,23 +270,16 @@
                     }
                     var same103_202 = (d103 && d202 && d103 === d202);
                     if(same103_202){
-                        // 103, 201 and 202 same day - check if 202 > EAD (Perda de CPT by time)
                         if(info.dateEAD && info.date202spc && info.date202spc > info.dateEAD){
                             return {bucket:'Perda de CPT', classificacao:'UTR Error', cptStatus:'CPT Miss', subKey:'Perda de CPT'};
                         }
-                        // All same day and within CPT - undefined
                         return {bucket:'', classificacao:'UTR Error', cptStatus:'Stow Miss', subKey:''};
                     }
-                    // 103 e 201 mesmo dia, 202 dia diferente -> Perda de CPT
                     return {bucket:'Perda de CPT', classificacao:'UTR Error', cptStatus:'CPT Miss', subKey:'Perda de CPT'};
                 } else {
-                    // 201 em dia diferente do 103
-                    // Check if has 216 on same day as 103 (APP finalizado)
                     if(d103 && d216 && d103 === d216){
                         return {bucket:'APP finalizado e não processado', classificacao:'UTR Error', cptStatus:'Stow Miss', subKey:'APP finalizado e não processado (UTR)'};
                     }
-
-                    // Atraso na chegada no SPC - with PUDO sub-bucket check via EVENT_105
                     if(info.hasEvent105){
                         return {bucket:'Atraso na chegada no SPC', classificacao:'UTR Error', cptStatus:'Stow Miss', subKey:'Atraso na chegada no SPC (PUDO)'};
                     }
@@ -304,7 +287,6 @@
                 }
             }
 
-            // Undefined - manual evaluation
             return {bucket:'', classificacao:'', cptStatus:'', subKey:''};
         }
 
@@ -340,17 +322,16 @@
                     var headers=raw;
                     var h={};
                     for(var i=0;i<headers.length;i++){
-                        h[String(headers[i]).trim().toLowerCase()]=i;
+                        h[String(headers[i]).trim().toLowerCase().replace(/\s+/g,'_')]=i;
                     }
 
-                    if(h['tracking_id']===undefined) throw new Error('Coluna tracking_id não encontrada');
+                    if(h['tracking_id']===undefined) throw new Error('Coluna tracking_id não encontrada. Colunas disponíveis: '+headers.join(', '));
                     if(h['status_event']===undefined) throw new Error('Coluna status_event não encontrada');
                     if(h['status_date']===undefined) throw new Error('Coluna status_date não encontrada');
                     if(h['status_node_id']===undefined) throw new Error('Coluna status_node_id não encontrada');
 
                     var ti=h['tracking_id'], ei=h['status_event'], di=h['status_date'], ni=h['status_node_id'];
 
-                    // Group events by tracking_id
                     var trackings={};
                     for(var r=1;r<raw.length;r++){
                         var row=raw[r];
@@ -373,7 +354,6 @@
                         });
                     }
 
-                    // Process each tracking
                     gOutputData=[];
                     var utrC=0, mnrC=0, blankC=0, perdaC=0;
                     var bCounts={};
@@ -384,7 +364,6 @@
                         var tid=tids[t];
                         var evts=trackings[tid];
 
-                        // Find SPC node (where EVENT_103 happened)
                         var e103=null;
                         for(var j=0;j<evts.length;j++){
                             if(evts[j].event==='EVENT_103'){e103=evts[j];break;}
@@ -394,40 +373,27 @@
                         var spcNode=e103.node;
                         var date103=e103.date;
 
-                        // Find EVENT_216 at SPC node
-                        var date216spc=null;
-                        var has216spc=false;
+                        var date216spc=null, has216spc=false;
                         for(var j=0;j<evts.length;j++){
                             if(evts[j].event==='EVENT_216' && evts[j].node===spcNode){
-                                date216spc=evts[j].date;
-                                has216spc=true;
-                                break;
+                                date216spc=evts[j].date; has216spc=true; break;
                             }
                         }
 
-                        // Find EVENT_201 at SPC node
-                        var date201spc=null;
-                        var has201spc=false;
+                        var date201spc=null, has201spc=false;
                         for(var j=0;j<evts.length;j++){
                             if(evts[j].event==='EVENT_201' && evts[j].node===spcNode){
-                                date201spc=evts[j].date;
-                                has201spc=true;
-                                break;
+                                date201spc=evts[j].date; has201spc=true; break;
                             }
                         }
 
-                        // Find EVENT_202 at SPC node
-                        var date202spc=null;
-                        var has202spc=false;
+                        var date202spc=null, has202spc=false;
                         for(var j=0;j<evts.length;j++){
                             if(evts[j].event==='EVENT_202' && evts[j].node===spcNode){
-                                date202spc=evts[j].date;
-                                has202spc=true;
-                                break;
+                                date202spc=evts[j].date; has202spc=true; break;
                             }
                         }
 
-                        // Check EVENT_238, EVENT_414, EVENT_105
                         var has238=false, has414=false, hasEvent105=false;
                         for(var j=0;j<evts.length;j++){
                             if(evts[j].event==='EVENT_238') has238=true;
@@ -435,7 +401,6 @@
                             if(evts[j].event==='EVENT_105') hasEvent105=true;
                         }
 
-                        // Get all unique nodes
                         var allNodes=[];
                         var seenNodes={};
                         for(var j=0;j<evts.length;j++){
@@ -443,40 +408,26 @@
                             if(nd && !seenNodes[nd]){seenNodes[nd]=true;allNodes.push(nd);}
                         }
 
-                        // Build route
                         var route=buildRoute(evts);
 
-                        // Find EAD (estimated arrival datetime) - EVENT_301 or EVENT_302
-                        var dateEAD=null;
-                        var estArrival='';
+                        var dateEAD=null, estArrival='';
                         for(var j=0;j<evts.length;j++){
                             if(evts[j].event==='EVENT_301'||evts[j].event==='EVENT_302'){
-                                dateEAD=evts[j].date;
-                                estArrival=formatDT(evts[j].date);
-                                break;
+                                dateEAD=evts[j].date; estArrival=formatDT(evts[j].date); break;
                             }
                         }
-                        // Fallback: use 103 date + 1 day at midnight as EAD reference
                         if(!dateEAD && date103){
                             dateEAD = new Date(date103.getFullYear(), date103.getMonth(), date103.getDate()+1, 0, 0, 0);
                             estArrival = formatDT(dateEAD);
                         }
 
-                        // Classify
                         var result=classifyTracking({
-                            has238:has238,
-                            has414:has414,
-                            hasEvent105:hasEvent105,
-                            spcNode:spcNode,
-                            date103:date103,
-                            date216spc:date216spc,
-                            has216spc:has216spc,
-                            date201spc:date201spc,
-                            date202spc:date202spc,
-                            has201spc:has201spc,
-                            has202spc:has202spc,
-                            allNodes:allNodes,
-                            dateEAD:dateEAD
+                            has238:has238, has414:has414, hasEvent105:hasEvent105,
+                            spcNode:spcNode, date103:date103,
+                            date216spc:date216spc, has216spc:has216spc,
+                            date201spc:date201spc, date202spc:date202spc,
+                            has201spc:has201spc, has202spc:has202spc,
+                            allNodes:allNodes, dateEAD:dateEAD
                         });
 
                         var bucket=result.bucket;
@@ -492,23 +443,13 @@
 
                         var bk=bucket||'Em branco (manual)';
                         bCounts[bk]=(bCounts[bk]||0)+1;
-
                         var sk=subBucket||'Em branco (manual)';
                         sCounts[sk]=(sCounts[sk]||0)+1;
 
                         gOutputData.push([
-                            tid,
-                            route,
-                            spcNode,
-                            estArrival,
-                            formatDT(date103),
-                            formatDT(date201spc),
-                            formatDT(date202spc),
-                            classificacao,
-                            cptStatus,
-                            bucket,
-                            subBucket,
-                            ''
+                            tid, route, spcNode, estArrival,
+                            formatDT(date103), formatDT(date201spc), formatDT(date202spc),
+                            classificacao, cptStatus, bucket, subBucket, ''
                         ]);
                     }
 
@@ -519,7 +460,6 @@
                     document.getElementById('perdaTotal').textContent=perdaC.toLocaleString('pt-BR');
                     document.getElementById('blankTotal').textContent=blankC.toLocaleString('pt-BR');
 
-                    // Bucket table
                     var entries=[];
                     for(var key in bCounts){if(bCounts.hasOwnProperty(key))entries.push({n:key,c:bCounts[key]});}
                     entries.sort(function(a,b){return b.c-a.c;});
@@ -530,7 +470,6 @@
                     }
                     document.getElementById('bucketBody').innerHTML=bHTML;
 
-                    // Sub-Bucket table
                     var sEntries=[];
                     for(var key in sCounts){if(sCounts.hasOwnProperty(key))sEntries.push({n:key,c:sCounts[key]});}
                     sEntries.sort(function(a,b){return b.c-a.c;});
@@ -566,39 +505,26 @@
                 for(var C=range.s.c;C<=range.e.c;C++){
                     var addr=XLSX.utils.encode_cell({r:R,c:C});
                     if(!ws[addr]) ws[addr]={v:'',t:'s'};
-
                     if(R===0){
                         ws[addr].s=HEADER_STYLE;
                     } else {
                         var isBucketCol=(C===bucketColIdx);
                         var isSubCol=(C===subColIdx);
                         var cellVal=String(ws[addr].v||'').trim();
-
                         if(isBucketCol && cellVal && BUCKET_COLORS.hasOwnProperty(cellVal)){
                             ws[addr].s={fill:{fgColor:{rgb:BUCKET_COLORS[cellVal]}},font:{color:{rgb:"000000"},bold:true}};
                         } else if(isSubCol && cellVal && SUB_COLORS.hasOwnProperty(cellVal)){
                             ws[addr].s={fill:{fgColor:{rgb:SUB_COLORS[cellVal]}},font:{color:{rgb:"000000"},bold:true}};
                         } else {
-                            var isOdd=(R%2===1);
-                            ws[addr].s=isOdd?BAND_STYLE:PLAIN_STYLE;
+                            ws[addr].s=(R%2===1)?BAND_STYLE:PLAIN_STYLE;
                         }
                     }
                 }
             }
 
             ws['!cols']=[
-                {wch:16},
-                {wch:55},
-                {wch:8},
-                {wch:22},
-                {wch:22},
-                {wch:22},
-                {wch:22},
-                {wch:14},
-                {wch:12},
-                {wch:38},
-                {wch:30},
-                {wch:25}
+                {wch:16},{wch:55},{wch:8},{wch:22},{wch:22},{wch:22},{wch:22},
+                {wch:14},{wch:12},{wch:38},{wch:30},{wch:25}
             ];
 
             var wb=XLSX.utils.book_new();
